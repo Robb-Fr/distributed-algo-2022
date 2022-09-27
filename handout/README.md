@@ -170,7 +170,7 @@ This is the recommended option.
 * We provide support for it.
 * Thus, students with limited programming knowledge are advised to use it.
 
-Get the VM Image from [here](https://github.com/LPD-EPFL/CS451-2022-project/blob/master/VM.txt).
+Get the VM Image from [here](https://github.com/LPD-EPFL/CS451-2022-project/blob/master/VM.txt) (Windows/Linux/Mac machines with Intel/AMD CPUs, as well as Mac machines with ARM CPUs).
 
 ### Using the Docker container
 This is recommended only to students with an existing knowledge in distributed programming.

@@ -6,6 +6,9 @@ https://drive.google.com/file/d/16_aiPlFayAfhGlY-fgH-pcDKhb2s48ks
 The second variant comes with all the necessary build tools, but does not include GuestAdditions. Use this variant only if you are experiecing compatibility problems with the first variant:
 https://drive.google.com/file/d/1ccK0O0JSyHnmB4tta_rz1KoDA2FiQAFD
 
+For those with Mac machines with ARM CPUs, please use this VM:
+https://drive.google.com/file/d/13Cx0s23CIlxz8t_AHrNfE-68fYh5OPNy/view?usp=sharing
+
 Notes:
 The provided images where created with VirtualBox 6.1. Please make sure you use a recent version of VirtualBox.
 
