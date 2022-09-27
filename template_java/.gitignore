@@ -1,5 +1,10 @@
-__pycache__/
+# Created by https://www.toptal.com/developers/gitignore/api/java
+# Edit at https://www.toptal.com/developers/gitignore?templates=java
 
+target/
+bin/da_proc.jar
+
+### Java ###
 # Compiled class file
 *.class
 
@@ -24,5 +29,4 @@ __pycache__/
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 
-# MacOS files
-.DS_Store
+# End of https://www.toptal.com/developers/gitignore/api/java
