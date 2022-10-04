@@ -49,6 +49,18 @@ public class Host {
         return ip;
     }
 
+    public InetAddress getInetAddress() {
+        InetAddress addr = null;
+        try {
+            addr = InetAddress.getByName(this.ip);
+        } catch (UnknownHostException e) {
+            // error is detected earlier, should not happen
+            e.printStackTrace();
+            System.err.println("Unexpectedly unable to parse the IP address");
+        }
+        return addr;
+    }
+
     public int getPort() {
         return port;
     }
