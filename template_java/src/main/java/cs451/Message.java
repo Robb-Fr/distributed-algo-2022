@@ -108,7 +108,9 @@ public class Message implements Serializable {
             }
         } finally {
             try {
-                bos.close();
+                if (out != null) {
+                    out.close();
+                }
             } catch (IOException ex) {
                 // ignore close exception
             }
