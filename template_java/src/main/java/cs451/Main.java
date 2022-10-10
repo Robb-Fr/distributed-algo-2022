@@ -59,13 +59,13 @@ public class Main {
         // immediately stop network packet processing
         System.out.println("Immediately stopping network packet processing.");
 
-        // write/flush output file if necessary
         // https://www.geeksforgeeks.org/java-program-to-write-into-a-file/
         System.out.println("Writing output.");
         BufferedWriter f_writer = null;
         try {
             f_writer = new BufferedWriter(new FileWriter(output));
             f_writer.append(logBuilder.get());
+            // flush the buffer to make sure everything is written
             f_writer.flush();
             f_writer.close();
         } catch (IOException e) {

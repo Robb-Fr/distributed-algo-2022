@@ -29,6 +29,17 @@ public class PerfectLink {
         this.delivered = new HashSet<>();
     }
 
+    /**
+     * Sends the given message to the given host making sure the delivery is
+     * "perfect"
+     * Validity, No duplication, No Creation
+     * 
+     * @param message : the message to be sent
+     * @param dest    : the host that should receive the message
+     * @throws UnknownHostException
+     * @throws IOException
+     * @throws InterruptedException
+     */
     public void sendPerfect(Message message, Host dest) throws UnknownHostException, IOException, InterruptedException {
         Message m = null;
         do {
@@ -37,6 +48,10 @@ public class PerfectLink {
         } while ((m = receiveMessage()) == null || !m.isAckForMsg(message.getId()));
     }
 
+    /**
+     * Implements the delivery of a perfect link to ensure the message is delivered
+     * to the parent with the Validity, No duplication and No creation properties.
+     */
     public void receiveAndDeliver() {
         Message m = receiveMessage();
         if (m != null && !(delivered.contains(m)) && !m.isAck()) {
@@ -45,6 +60,14 @@ public class PerfectLink {
         }
     }
 
+    /**
+     * Primitive for sending a message without the Validity property
+     * 
+     * @param message
+     * @param dest
+     * @throws UnknownHostException
+     * @throws IOException
+     */
     private void sendMessage(Message message, Host dest) throws UnknownHostException, IOException {
         byte[] msgBytes = message.serialize();
         if (msgBytes.length > Constants.MAX_DATAGRAM_LENGTH) {
@@ -55,6 +78,12 @@ public class PerfectLink {
         socket.send(packet);
     }
 
+    /**
+     * Primitive for receiving a message and sending an ACK on correct reception but
+     * without the Validity property
+     * 
+     * @return : the received message if correctly received
+     */
     private Message receiveMessage() {
         // we should only have sent packets not exceeding this size
         byte[] buf = new byte[Constants.MAX_DATAGRAM_LENGTH];

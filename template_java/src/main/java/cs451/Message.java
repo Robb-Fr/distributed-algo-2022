@@ -15,6 +15,9 @@ public class Message implements Serializable {
     }
 
     /**
+     * Gives the message encoded in the serialized bytes given in input or yields an
+     * error if the bytes can't be deserialized.
+     * 
      * @param bytes : the received bytes on the socket to be deserialized
      * @return : the received message or null if deserialization failed
      * @throws IOException
@@ -81,6 +84,7 @@ public class Message implements Serializable {
     }
 
     /**
+     * Returns whether this message is an ACK message for the id given in argument
      * @param id : the id of the message we want to check ACK for
      * @return : wether this message is an ACK for the CONTENT message with given id
      */
@@ -89,6 +93,7 @@ public class Message implements Serializable {
     }
 
     /**
+     * Uses Java standard serialization to give the bytes corresponding to this object Message
      * https://stackoverflow.com/questions/2836646/java-serializable-object-to-byte-array
      * 
      * @return : the serialized bytes representing this message
