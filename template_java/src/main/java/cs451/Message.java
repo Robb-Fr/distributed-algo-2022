@@ -20,35 +20,28 @@ public class Message implements Serializable {
      * 
      * @param bytes : the received bytes on the socket to be deserialized
      * @return : the received message or null if deserialization failed
-     * @throws IOException
-     * @throws ClassNotFoundException
      */
-    public static Message deserialize(byte[] bytes) throws IOException, ClassNotFoundException {
+    public static Message deserialize(byte[] bytes) {
         // https://stackoverflow.com/questions/2836646/java-serializable-object-to-byte-array
-        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-        ObjectInput in = null;
-        Message m = null;
         try {
-            in = new ObjectInputStream(bis);
-            m = (Message) in.readObject();
-            if (!(m instanceof Message | m.sender == null | m.type == null)) {
-                throw new ClassCastException("Cannot deserialize the bytes to the class object");
+            ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+            ObjectInput in = new ObjectInputStream(bis);
+            Message m = (Message) in.readObject();
+            in.close();
+            bis.close();
+            if (m instanceof Message && m.type != null) {
+                return m;
             }
-        } finally {
-            try {
-                if (in != null) {
-                    in.close();
-                }
-            } catch (IOException ex) {
-                // ignore close exception
-            }
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("An error occurred while deserializing the received object");
+            e.printStackTrace();
         }
-        return m;
+        return null;
     }
 
     private final int id;
 
-    private final Host sender;
+    private final int senderId;
 
     private final PayloadType type;
 
@@ -58,12 +51,12 @@ public class Message implements Serializable {
      * @param sender : the sender of the message
      * @param type   : if the message is an ACK or a CONTENT type message
      */
-    public Message(int id, Host sender, PayloadType type) {
-        if (sender == null || type == null) {
+    public Message(int id, int senderId, PayloadType type) {
+        if (type == null) {
             throw new IllegalArgumentException("You cannot create a message with null fields");
         }
         this.id = id;
-        this.sender = sender;
+        this.senderId = senderId;
         this.type = type;
     }
 
@@ -71,12 +64,8 @@ public class Message implements Serializable {
         return id;
     }
 
-    public long getSenderId() {
-        return sender.getId();
-    }
-
-    public Host getSender() {
-        return sender;
+    public int getSenderId() {
+        return this.senderId;
     }
 
     public boolean isAck() {
@@ -85,6 +74,7 @@ public class Message implements Serializable {
 
     /**
      * Returns whether this message is an ACK message for the id given in argument
+     * 
      * @param id : the id of the message we want to check ACK for
      * @return : wether this message is an ACK for the CONTENT message with given id
      */
@@ -93,34 +83,28 @@ public class Message implements Serializable {
     }
 
     /**
-     * Uses Java standard serialization to give the bytes corresponding to this object Message
+     * Uses Java standard serialization to give the bytes corresponding to this
+     * object Message
      * https://stackoverflow.com/questions/2836646/java-serializable-object-to-byte-array
      * 
      * @return : the serialized bytes representing this message
      * @throws IOException
      */
-    public byte[] serialize() throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream out = null;
-        byte[] serialized = null;
+    public byte[] serialize() {
         try {
-            out = new ObjectOutputStream(bos);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutputStream out = new ObjectOutputStream(bos);
             out.writeObject(this);
             out.flush();
-            serialized = bos.toByteArray();
-            if (serialized == null || serialized.length == 0) {
-                throw new IOException("Unable to serialize to a non empty value");
-            }
-        } finally {
-            try {
-                if (out != null) {
-                    out.close();
-                }
-            } catch (IOException ex) {
-                // ignore close exception
-            }
+            byte[] serialized = bos.toByteArray();
+            out.close();
+            bos.close();
+            return serialized;
+        } catch (IOException e) {
+            System.err.println("An error occurred while serializing the received object");
+            e.printStackTrace();
         }
-        return serialized;
+        return null;
 
     }
 
