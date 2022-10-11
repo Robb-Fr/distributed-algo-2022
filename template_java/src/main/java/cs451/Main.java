@@ -3,9 +3,9 @@ package cs451;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.Socket;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Main {
@@ -43,9 +43,25 @@ public class Main {
         System.out.println("===============");
         System.out.println(parser.config() + "\n");
 
-        System.out.println("Doing some initialization\n");
+        try {
+            System.out.println("Doing some initialization\n");
+            Map<Integer, Host> hostsMap = parser.hostsMap();
+            ConfigParser configParser = parser.configParser();
+            int myId = parser.myId();
+            Sender sender = new Sender(logBuilder, myId, hostsMap, configParser);
+            Receiver receiver = new Receiver(logBuilder, myId, hostsMap.get(myId), configParser);
+            Thread senderThread = new Thread(sender);
+            Thread receiverThread = new Thread(receiver);
 
-        System.out.println("Broadcasting and delivering messages...\n");
+            System.out.println("Broadcasting and delivering messages...\n");
+
+            senderThread.start();
+            receiverThread.start();
+        } catch (UnknownHostException | SocketException e) {
+            System.err.println("Could not configure correctly the host");
+            e.printStackTrace();
+            System.exit(1);
+        }
 
         // After a process finishes broadcasting,
         // it waits forever for the delivery of messages.
@@ -61,9 +77,8 @@ public class Main {
 
         // https://www.geeksforgeeks.org/java-program-to-write-into-a-file/
         System.out.println("Writing output.");
-        BufferedWriter f_writer = null;
         try {
-            f_writer = new BufferedWriter(new FileWriter(output));
+            BufferedWriter f_writer = new BufferedWriter(new FileWriter(output));
             f_writer.append(logBuilder.get());
             // flush the buffer to make sure everything is written
             f_writer.flush();
@@ -71,14 +86,6 @@ public class Main {
         } catch (IOException e) {
             e.printStackTrace();
             System.err.println("Failed to write output");
-        } finally {
-            try {
-                if (f_writer != null) {
-                    f_writer.close();
-                }
-            } catch (IOException e) {
-                // ignore exception when closing
-            }
         }
     }
 
