@@ -50,19 +50,24 @@ public class Host {
     }
 
     public InetAddress getInetAddress() {
-        InetAddress addr = null;
         try {
-            addr = InetAddress.getByName(this.ip);
+            InetAddress addr = InetAddress.getByName(this.ip);
+            return addr;
         } catch (UnknownHostException e) {
             // error is detected earlier, should not happen
             e.printStackTrace();
             System.err.println("Unexpectedly unable to parse the IP address");
         }
-        return addr;
+        return null;
     }
 
     public int getPort() {
         return port;
+    }
+
+    @Override
+    public String toString() {
+        return "Host [id=" + id + ", ip=" + ip + ", port=" + port + "]";
     }
 
 }
