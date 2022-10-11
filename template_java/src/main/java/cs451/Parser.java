@@ -1,6 +1,8 @@
 package cs451;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Parser {
 
@@ -62,12 +64,25 @@ public class Parser {
         return hostsParser.getHosts();
     }
 
+    public Map<Integer, Host> hostsMap() {
+        List<Host> hosts = hosts();
+        Map<Integer, Host> hostsMap = new HashMap<>(hosts.size());
+        for (Host host : hosts) {
+            hostsMap.put(host.getId(), host);
+        }
+        return hostsMap;
+    }
+
     public String output() {
         return outputParser.getPath();
     }
 
     public String config() {
         return configParser.getPath();
+    }
+
+    public ConfigParser configParser() {
+        return configParser;
     }
 
 }
