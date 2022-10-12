@@ -3,6 +3,7 @@ package cs451;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Map;
@@ -15,7 +16,6 @@ public class Main {
         parser.parse();
 
         AtomicReference<StringBuilder> logBuilder = new AtomicReference<>(new StringBuilder(""));
-
         initSignalHandlers(logBuilder, parser.output());
 
         // example
@@ -49,12 +49,14 @@ public class Main {
             ConfigParser configParser = parser.configParser();
             int myId = parser.myId();
             Sender sender = new Sender(logBuilder, myId, hostsMap, configParser);
-            Receiver receiver = new Receiver(logBuilder, myId, hostsMap.get(myId), configParser);
+            // sender gives reference to socket as the process will have to use the same
+            // socket for their PL
+            AtomicReference<DatagramSocket> socket = sender.getSocket();
+            Receiver receiver = new Receiver(logBuilder, myId, hostsMap.get(myId), hostsMap, configParser, socket);
             Thread senderThread = new Thread(sender);
             Thread receiverThread = new Thread(receiver);
 
             System.out.println("Broadcasting and delivering messages...\n");
-
             senderThread.start();
             receiverThread.start();
         } catch (UnknownHostException | SocketException e) {
