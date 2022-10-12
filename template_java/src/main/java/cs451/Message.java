@@ -15,8 +15,8 @@ public class Message implements Serializable {
     }
 
     /**
-     * Gives the message encoded in the serialized bytes given in input or yields an
-     * error if the bytes can't be deserialized.
+     * Gives the message encoded in the serialized bytes given in input or null the
+     * bytes can't be deserialized.
      * 
      * @param bytes : the received bytes on the socket to be deserialized
      * @return : the received message or null if deserialization failed
@@ -33,8 +33,7 @@ public class Message implements Serializable {
                 return m;
             }
         } catch (IOException | ClassNotFoundException e) {
-            System.err.println("An error occurred while deserializing the received object");
-            e.printStackTrace();
+            // ignore the error
         }
         return null;
     }
@@ -109,11 +108,16 @@ public class Message implements Serializable {
     }
 
     @Override
+    public String toString() {
+        return "Message [id=" + id + ", senderId=" + senderId + ", type=" + type + "]";
+    }
+
+    @Override
     public int hashCode() {
-        // only takes into account the id (for the hash tables)
         final int prime = 31;
         int result = 1;
         result = prime * result + id;
+        result = prime * result + senderId;
         return result;
     }
 
@@ -127,6 +131,8 @@ public class Message implements Serializable {
             return false;
         Message other = (Message) obj;
         if (id != other.id)
+            return false;
+        if (senderId != other.senderId)
             return false;
         return true;
     }
