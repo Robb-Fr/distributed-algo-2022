@@ -18,6 +18,13 @@ public class Constants {
     // indexes for config
     public static final int CONFIG_VALUE = 6;
 
-    // max datagram length for not breaking network https://stackoverflow.com/questions/1098897/what-is-the-largest-safe-udp-packet-size-on-the-internet 
+    // max datagram length for not breaking network
+    // https://stackoverflow.com/questions/1098897/what-is-the-largest-safe-udp-packet-size-on-the-internet
     public static final int MAX_DATAGRAM_LENGTH = 576;
+
+    public static final int SLEEP_BEFORE_RESEND = 2;
+
+    public static final int SLEEP_BEFORE_RECEIVE = 0;
+
+    public static final int SOCKET_TIMEOUT = 40;
 }
