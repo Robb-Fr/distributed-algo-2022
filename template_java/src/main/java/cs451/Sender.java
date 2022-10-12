@@ -1,6 +1,6 @@
 package cs451;
 
-import java.io.IOException;
+import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Map;
@@ -16,6 +16,14 @@ public class Sender implements Runnable {
     private final ConfigParser configParser;
     private final PerfectLink link;
 
+    /**
+     * @param logBuilder
+     * @param selfId
+     * @param hostsMap
+     * @param config
+     * @throws UnknownHostException
+     * @throws SocketException
+     */
     public Sender(AtomicReference<StringBuilder> logBuilder, int selfId, Map<Integer, Host> hostsMap,
             ConfigParser config)
             throws UnknownHostException, SocketException {
@@ -31,14 +39,19 @@ public class Sender implements Runnable {
 
     }
 
+    /**
+     * @return : reference to the socket in the link
+     */
+    public AtomicReference<DatagramSocket> getSocket() {
+        return link.getSocket();
+    }
+
     @Override
     public void run() {
         try {
             runPerfectLink();
         } catch (InterruptedException e) {
             e.printStackTrace();
-        } finally {
-            link.close();
         }
 
     }
@@ -49,20 +62,22 @@ public class Sender implements Runnable {
             System.err.println("Could not read the perfect link config");
             return;
         }
-        System.out.println("Perfect link run config found : " + plConf);
         if (self.getId() == plConf.getReceiverId()) {
+            System.out.println("I am not a sender, no need to send anything");
             // we are the receiver in this run, we have nothing to send
             return;
         } else {
+            System.out.println("I am a sender, here we go sending");
             // we are a sender
             int nbMessages = plConf.getNbMessages();
             Host dest = hostsMap.get(plConf.getReceiverId());
-            for (int i = 0; i < nbMessages; ++i) {
-                Message m = new Message(i, this.self.getId(), PayloadType.CONTENT);
+            for (int i = 1; i <= nbMessages; ++i) {
+                Message m = new Message(i, self.getId(), PayloadType.CONTENT);
                 link.sendPerfect(m, dest);
                 logBuilder.getAndUpdate(s -> s.append("b " + m.getId() + "\n"));
             }
         }
+        System.out.println("Finished sending messages !");
     }
 
 }
