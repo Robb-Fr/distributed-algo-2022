@@ -54,7 +54,7 @@ public class Host {
             InetAddress addr = InetAddress.getByName(this.ip);
             return addr;
         } catch (UnknownHostException e) {
-            // error is detected earlier, should not happen
+            // error should be detected earlier, should not happen
             e.printStackTrace();
             System.err.println("Unexpectedly unable to parse the IP address");
         }
