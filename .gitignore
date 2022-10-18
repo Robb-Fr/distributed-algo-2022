@@ -25,5 +25,7 @@ hs_err_pid*
 # MacOS files
 .DS_Store
 
-# logs file from stress test
-tools/logs/
+# logs file
+*.output
+*.stderr
+*.stdout
