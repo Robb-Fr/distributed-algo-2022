@@ -15,10 +15,7 @@ public class Main {
         Parser parser = new Parser(args);
         parser.parse();
 
-        AtomicReference<StringBuilder> logBuilder = new AtomicReference<>(new StringBuilder(""));
-        initSignalHandlers(logBuilder, parser.output());
-
-        // example
+        // displays config
         long pid = ProcessHandle.current().pid();
         System.out.println("My PID: " + pid + "\n");
         System.out.println("From a new terminal type `kill -SIGINT " + pid + "` or `kill -SIGTERM " + pid
@@ -43,18 +40,21 @@ public class Main {
         System.out.println("===============");
         System.out.println(parser.config() + "\n");
 
+        // running code for the assignment
         try {
             System.out.println("Doing some initialization\n");
+            AtomicReference<StringBuilder> logBuilder = new AtomicReference<>(new StringBuilder(""));
             Map<Integer, Host> hostsMap = parser.hostsMap();
             ConfigParser configParser = parser.configParser();
             int myId = parser.myId();
             Sender sender = new Sender(logBuilder, myId, hostsMap, configParser);
             // sender gives reference to socket as the process will have to use the same
-            // socket for their PL
+            // socket for their PL (cannot open 2 sockets for same host)
             AtomicReference<DatagramSocket> socket = sender.getSocket();
-            Receiver receiver = new Receiver(logBuilder, myId, hostsMap.get(myId), hostsMap, configParser, socket);
+            Receiver receiver = new Receiver(logBuilder, myId, hostsMap, configParser, socket);
             Thread senderThread = new Thread(sender);
             Thread receiverThread = new Thread(receiver);
+            initSignalHandlers(logBuilder, parser.output(), senderThread, receiverThread);
 
             System.out.println("Broadcasting and delivering messages...\n");
             senderThread.start();
@@ -73,9 +73,12 @@ public class Main {
         }
     }
 
-    private static void handleSignal(AtomicReference<StringBuilder> logBuilder, String output) {
+    private static void handleSignal(AtomicReference<StringBuilder> logBuilder, String output, Thread sender,
+            Thread receiver) {
         // immediately stop network packet processing
         System.out.println("Immediately stopping network packet processing.");
+        sender.interrupt();
+        receiver.interrupt();
 
         // https://www.geeksforgeeks.org/java-program-to-write-into-a-file/
         System.out.println("Writing output.");
@@ -91,11 +94,12 @@ public class Main {
         }
     }
 
-    private static void initSignalHandlers(AtomicReference<StringBuilder> logBuilder, String output) {
+    private static void initSignalHandlers(AtomicReference<StringBuilder> logBuilder, String output, Thread sender,
+            Thread receiver) {
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
-                handleSignal(logBuilder, output);
+                handleSignal(logBuilder, output, sender, receiver);
             }
         });
     }
