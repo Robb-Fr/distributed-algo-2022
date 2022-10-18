@@ -26,5 +26,5 @@ public class Constants {
 
     public static final int SLEEP_BEFORE_RECEIVE = 0;
 
-    public static final int SOCKET_TIMEOUT = 40;
+    public static final int SOCKET_TIMEOUT = 20;
 }
