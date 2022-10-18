@@ -19,6 +19,12 @@ public class ConfigParser {
         return path;
     }
 
+    /**
+     * Returns the perfect link config object associated with the given found config
+     * path, or null if the config cannot be parsed.
+     * 
+     * @return
+     */
     public PerfectLinkConfig getPerfectLinkConfig() {
         try {
             BufferedReader myReader = new BufferedReader(new FileReader(path));
