@@ -9,33 +9,19 @@ import java.util.concurrent.atomic.AtomicReference;
 import cs451.ConfigParser.PerfectLinkConfig;
 
 public class Receiver implements Deliverable, Runnable {
-
     private final AtomicReference<StringBuilder> logBuilder;
-    private final int selfId;
+    private final int myId;
     private final ConfigParser configParser;
     private final PerfectLink link;
 
-    /**
-     * @param logBuilder
-     * @param selfId
-     * @param selfHost
-     * @param hostsMap
-     * @param configParser
-     * @param socket : passes the socket built by the sender in AtomicReference
-     * @throws UnknownHostException
-     * @throws SocketException
-     */
-    public Receiver(AtomicReference<StringBuilder> logBuilder, int selfId, Host selfHost, Map<Integer, Host> hostsMap,
+    public Receiver(AtomicReference<StringBuilder> logBuilder, int myId, Map<Integer, Host> hostsMap,
             ConfigParser configParser,
             AtomicReference<DatagramSocket> socket)
             throws UnknownHostException, SocketException {
         this.logBuilder = logBuilder;
-        this.selfId = selfId;
+        this.myId = myId;
         this.configParser = configParser;
-        if (selfHost == null) {
-            throw new IllegalArgumentException("Hosts list does not contain an host with this host's id");
-        }
-        this.link = new PerfectLink(selfHost, hostsMap, this, socket);
+        this.link = new PerfectLink(myId, hostsMap, this, socket);
     }
 
     @Override
@@ -61,7 +47,7 @@ public class Receiver implements Deliverable, Runnable {
             System.err.println("Could not read the perfect link config");
             return;
         }
-        if (plConf.getReceiverId() != selfId) {
+        if (plConf.getReceiverId() != myId) {
             System.out.println("I am not the receiver, no need to receive");
             return;
         } else {

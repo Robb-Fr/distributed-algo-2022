@@ -11,32 +11,20 @@ import cs451.Message.PayloadType;
 
 public class Sender implements Runnable {
     private final AtomicReference<StringBuilder> logBuilder;
-    private final Host self;
+    private final int myId;
     private final Map<Integer, Host> hostsMap;
     private final ConfigParser configParser;
     private final PerfectLink link;
 
-    /**
-     * @param logBuilder
-     * @param selfId
-     * @param hostsMap
-     * @param config
-     * @throws UnknownHostException
-     * @throws SocketException
-     */
-    public Sender(AtomicReference<StringBuilder> logBuilder, int selfId, Map<Integer, Host> hostsMap,
+
+    public Sender(AtomicReference<StringBuilder> logBuilder, int myId, Map<Integer, Host> hostsMap,
             ConfigParser config)
             throws UnknownHostException, SocketException {
+        this.myId = myId;
         this.logBuilder = logBuilder;
         this.configParser = config;
-        Host selfHost = hostsMap.get(selfId);
-        if (selfHost == null) {
-            throw new IllegalArgumentException("Hosts list does not contain an host with this host's id");
-        }
-        this.self = selfHost;
         this.hostsMap = hostsMap;
-        this.link = new PerfectLink(self, hostsMap);
-
+        this.link = new PerfectLink(myId, hostsMap);
     }
 
     /**
@@ -62,7 +50,7 @@ public class Sender implements Runnable {
             System.err.println("Could not read the perfect link config");
             return;
         }
-        if (self.getId() == plConf.getReceiverId()) {
+        if (myId == plConf.getReceiverId()) {
             System.out.println("I am not a sender, no need to send anything");
             // we are the receiver in this run, we have nothing to send
             return;
@@ -72,7 +60,7 @@ public class Sender implements Runnable {
             int nbMessages = plConf.getNbMessages();
             Host dest = hostsMap.get(plConf.getReceiverId());
             for (int i = 1; i <= nbMessages; ++i) {
-                Message m = new Message(i, self.getId(), PayloadType.CONTENT);
+                Message m = new Message(i, myId, PayloadType.CONTENT);
                 link.sendPerfect(m, dest);
                 logBuilder.getAndUpdate(s -> s.append("b " + m.getId() + "\n"));
             }
