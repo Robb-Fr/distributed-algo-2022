@@ -21,7 +21,6 @@ jobs:
       with:
         java-version: '~11.0.8'
         distribution: 'temurin'
-        mvn-toolchain-id: 'cecedd343002696d0abb50b32b541b8a6ba2883f'
         cache: maven
     - name: Build with Maven
       run: template_java/build.sh
