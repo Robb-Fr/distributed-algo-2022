@@ -19,6 +19,7 @@ import java.net.InetSocketAddress;
 
 public class PerfectLink implements Closeable {
     private final AtomicReference<DatagramSocket> socket;
+    private final int myId;
     private final Host thisHost;
     private final Map<Integer, Host> hosts;
     private final Deliverable parent;
@@ -32,14 +33,15 @@ public class PerfectLink implements Closeable {
      * @param parent
      * @param socket
      */
-    public PerfectLink(Host thisHost, Map<Integer, Host> hostsMap, Deliverable parent,
+    public PerfectLink(int myId, Map<Integer, Host> hostsMap, Deliverable parent,
             AtomicReference<DatagramSocket> socket) {
-        if (parent == null || hostsMap == null || thisHost == null || socket == null) {
+        if (parent == null || hostsMap == null || socket == null) {
             throw new IllegalArgumentException(
                     "A receiver cannot have null parent or a null self host or a null socket reference or null hosts");
         }
-        this.thisHost = thisHost;
+        this.myId = myId;
         this.hosts = hostsMap;
+        this.thisHost = this.hosts.get(this.myId);
         this.socket = socket;
         this.parent = parent;
         this.delivered = new HashSet<>();
@@ -53,15 +55,16 @@ public class PerfectLink implements Closeable {
      * @throws SocketException
      * @throws UnknownHostException
      */
-    public PerfectLink(Host thisHost, Map<Integer, Host> hosts) throws SocketException, UnknownHostException {
-        if (thisHost == null || hosts == null) {
+    public PerfectLink(int myId, Map<Integer, Host> hostsMap) throws SocketException, UnknownHostException {
+        if (hostsMap == null) {
             throw new IllegalArgumentException("A sender cannot have null self host or hosts map");
         }
-        this.thisHost = thisHost;
-        InetAddress thisHostIp = InetAddress.getByName(thisHost.getIp());
+        this.myId = myId;
+        this.hosts = hostsMap;
+        this.thisHost = this.hosts.get(this.myId);
+        InetAddress thisHostIp = InetAddress.getByName(this.thisHost.getIp());
         this.socket = new AtomicReference<DatagramSocket>(new DatagramSocket(thisHost.getPort(), thisHostIp));
         this.socket.get().setSoTimeout(Constants.SOCKET_TIMEOUT);
-        this.hosts = hosts;
         this.parent = null;
         this.delivered = null;
     }
@@ -76,8 +79,9 @@ public class PerfectLink implements Closeable {
      * @throws InterruptedException
      */
     public void sendPerfect(Message message, Host dest) throws InterruptedException {
-        if (thisHost == null || hosts == null) {
-            System.err.println("Cannot send through this perfect link as it belongs to a receiver");
+        if (dest == null || message == null) {
+            throw new IllegalArgumentException(
+                    "Cannot send null message or message to null host");
         }
         Message m = null;
         do {
@@ -126,6 +130,10 @@ public class PerfectLink implements Closeable {
      * @param dest
      */
     private void sendMessage(Message message, Host dest) {
+        if (dest == null || message == null) {
+            throw new IllegalArgumentException(
+                    "Cannot send null message or message to null host");
+        }
         byte[] msgBytes = message.serialize();
         if (msgBytes == null) {
             return;
@@ -156,7 +164,7 @@ public class PerfectLink implements Closeable {
         try {
             socket.get().receive(packet);
         } catch (IOException e) {
-            // packet not delivered, report only the non Timeout error
+            // packet not received, report only the non Timeout error
             if (!(e instanceof SocketTimeoutException)) {
                 System.err.println("Error while receiving the packet");
                 e.printStackTrace();
