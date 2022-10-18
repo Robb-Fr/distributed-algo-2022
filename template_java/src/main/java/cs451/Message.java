@@ -114,6 +114,7 @@ public class Message implements Serializable {
 
     @Override
     public int hashCode() {
+        // uses id and sender id to identify a message
         final int prime = 31;
         int result = 1;
         result = prime * result + id;
