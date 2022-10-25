@@ -60,13 +60,17 @@ public class Parser {
         return idParser.getId();
     }
 
+    public byte myByteId() {
+        return idParser.getByteId();
+    }
+
     public List<Host> hosts() {
         return hostsParser.getHosts();
     }
 
-    public Map<Integer, Host> hostsMap() {
+    public Map<Byte, Host> hostsMap() {
         List<Host> hosts = hosts();
-        Map<Integer, Host> hostsMap = new HashMap<>(hosts.size());
+        Map<Byte, Host> hostsMap = new HashMap<>(hosts.size());
         for (Host host : hosts) {
             hostsMap.put(host.getId(), host);
         }

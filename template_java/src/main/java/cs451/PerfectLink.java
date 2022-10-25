@@ -19,9 +19,9 @@ import java.net.InetSocketAddress;
 
 public class PerfectLink implements Closeable {
     private final AtomicReference<DatagramSocket> socket;
-    private final int myId;
+    private final byte myId;
     private final Host thisHost;
-    private final Map<Integer, Host> hosts;
+    private final Map<Byte, Host> hosts;
     private final Deliverable parent;
     private final Set<Message> delivered;
 
@@ -33,7 +33,7 @@ public class PerfectLink implements Closeable {
      * @param parent
      * @param socket
      */
-    public PerfectLink(int myId, Map<Integer, Host> hostsMap, Deliverable parent,
+    public PerfectLink(byte myId, Map<Byte, Host> hostsMap, Deliverable parent,
             AtomicReference<DatagramSocket> socket) {
         if (parent == null || hostsMap == null || socket == null) {
             throw new IllegalArgumentException(
@@ -55,7 +55,7 @@ public class PerfectLink implements Closeable {
      * @throws SocketException
      * @throws UnknownHostException
      */
-    public PerfectLink(int myId, Map<Integer, Host> hostsMap) throws SocketException, UnknownHostException {
+    public PerfectLink(byte myId, Map<Byte, Host> hostsMap) throws SocketException, UnknownHostException {
         if (hostsMap == null) {
             throw new IllegalArgumentException("A sender cannot have null self host or hosts map");
         }

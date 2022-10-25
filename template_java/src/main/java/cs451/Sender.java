@@ -11,13 +11,13 @@ import cs451.Message.PayloadType;
 
 public class Sender implements Runnable {
     private final AtomicReference<StringBuilder> logBuilder;
-    private final int myId;
-    private final Map<Integer, Host> hostsMap;
+    private final byte myId;
+    private final Map<Byte, Host> hostsMap;
     private final ConfigParser configParser;
     private final PerfectLink link;
 
 
-    public Sender(AtomicReference<StringBuilder> logBuilder, int myId, Map<Integer, Host> hostsMap,
+    public Sender(AtomicReference<StringBuilder> logBuilder, byte myId, Map<Byte, Host> hostsMap,
             ConfigParser config)
             throws UnknownHostException, SocketException {
         this.myId = myId;
