@@ -22,9 +22,9 @@ public class Constants {
     // https://stackoverflow.com/questions/1098897/what-is-the-largest-safe-udp-packet-size-on-the-internet
     public static final int MAX_DATAGRAM_LENGTH = 576;
 
-    public static final int SLEEP_BEFORE_RESEND = 2;
+    public static final int SLEEP_BEFORE_RESEND = 0;
 
     public static final int SLEEP_BEFORE_RECEIVE = 0;
 
-    public static final int SOCKET_TIMEOUT = 20;
+    public static final int SOCKET_TIMEOUT = 100;
 }
