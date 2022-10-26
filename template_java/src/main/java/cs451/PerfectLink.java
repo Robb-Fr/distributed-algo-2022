@@ -87,7 +87,6 @@ public class PerfectLink implements Closeable {
         do {
             sendMessage(message, dest);
             Thread.sleep(Constants.SLEEP_BEFORE_RESEND);
-            System.out.println("Message sent");
         } while ((m = receiveMessage()) == null || !m.isAckForMsg(message.getId()));
         System.out.println("Perfectly sent");
     }
@@ -101,9 +100,9 @@ public class PerfectLink implements Closeable {
             System.err.println("Cannot deliver for this perfect link as it belongs to sender");
         }
         Message m = receiveMessage();
-        if (m != null) {
-            System.out.println("Received message : " + m);
-        }
+        // if (m != null) {
+        //     System.out.println("Received message : " + m);
+        // }
         if (m != null && !(delivered.contains(m)) && !m.isAck()) {
             parent.deliver(m);
             delivered.add(m);
@@ -172,7 +171,6 @@ public class PerfectLink implements Closeable {
         }
         Message m = Message.deserialize(packet.getData());
         if (m != null && !m.isAck()) {
-            System.out.println("Sending ACK");
             sendMessage(new Message(m.getId(), thisHost.getId(), PayloadType.ACK), hosts.get(m.getSenderId()));
         }
         return m;
