@@ -29,3 +29,6 @@ hs_err_pid*
 *.output
 *.stderr
 *.stdout
+tools/logs/*
+tools/logs/hosts
+tools/logs/config
