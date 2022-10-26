@@ -29,4 +29,3 @@ hs_err_pid*
 *.output
 *.stderr
 *.stdout
-tools/logs/config
