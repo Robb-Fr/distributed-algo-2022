@@ -83,11 +83,10 @@ public class PerfectLink implements Closeable {
             throw new IllegalArgumentException(
                     "Cannot send null message or message to null host");
         }
-        Message m = null;
         do {
             sendMessage(message, dest);
             Thread.sleep(Constants.SLEEP_BEFORE_RESEND);
-        } while ((m = receiveMessage()) == null || !m.isAckForMsg(message.getId()));
+        } while (receiveMessage(message.getId()) == null);
         System.out.println("Perfectly sent");
     }
 
@@ -99,10 +98,7 @@ public class PerfectLink implements Closeable {
         if (parent == null || delivered == null) {
             System.err.println("Cannot deliver for this perfect link as it belongs to sender");
         }
-        Message m = receiveMessage();
-        // if (m != null) {
-        //     System.out.println("Received message : " + m);
-        // }
+        Message m = receiveMessage(-1);
         if (m != null && !(delivered.contains(m)) && !m.isAck()) {
             parent.deliver(m);
             delivered.add(m);
@@ -154,9 +150,12 @@ public class PerfectLink implements Closeable {
      * Primitive for receiving a message and sending an ACK on correct reception but
      * without the Validity property
      * 
+     * @param ackExpectedForMsg : indicates for which message id we are trying to receive an
+     *                  ACK for. If we just receive any message to be delivered we
+     *                  indicate a negative value
      * @return : the received message if correctly received
      */
-    private Message receiveMessage() {
+    private Message receiveMessage(int ackExpectedForMsg) {
         // we should only have sent packets not exceeding this size
         byte[] buf = new byte[Constants.MAX_DATAGRAM_LENGTH];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
@@ -170,10 +169,26 @@ public class PerfectLink implements Closeable {
             }
         }
         Message m = Message.deserialize(packet.getData());
-        if (m != null && !m.isAck()) {
-            sendMessage(new Message(m.getId(), thisHost.getId(), PayloadType.ACK), hosts.get(m.getSenderId()));
+        if (m != null) {
+            // we check we received an actual message
+            if (ackExpectedForMsg < 0) {
+                // if the message is not expected to be an ACK
+                if (!m.isAck()) {
+                    // if the received message is not an ACK itself, we can send an ACK
+                    sendMessage(new Message(m.getId(), thisHost.getId(), PayloadType.ACK), hosts.get(m.getSenderId()));
+                }
+            } else {
+                // we expect specifically an ACK for the message with id ackForMsg
+                if (!m.isAckForMsg(ackExpectedForMsg)) {
+                    // the received message is not the ACK we expect
+                    return null;
+                }
+            }
+            // we return m if it is not expected to be an ack or if it is the ACK we
+            // expected
+            return m;
         }
-        return m;
+        return null;
     }
 
 }
