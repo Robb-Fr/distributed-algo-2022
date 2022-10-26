@@ -40,7 +40,7 @@ public class Message implements Serializable {
 
     private final int id;
 
-    private final int senderId;
+    private final byte senderId;
 
     private final PayloadType type;
 
@@ -50,7 +50,7 @@ public class Message implements Serializable {
      * @param sender : the sender of the message
      * @param type   : if the message is an ACK or a CONTENT type message
      */
-    public Message(int id, int senderId, PayloadType type) {
+    public Message(int id, byte senderId, PayloadType type) {
         if (type == null) {
             throw new IllegalArgumentException("You cannot create a message with null fields");
         }
@@ -63,7 +63,7 @@ public class Message implements Serializable {
         return id;
     }
 
-    public int getSenderId() {
+    public byte getSenderId() {
         return this.senderId;
     }
 
