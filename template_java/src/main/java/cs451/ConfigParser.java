@@ -33,11 +33,8 @@ public class ConfigParser {
             if (data != null) {
                 String[] parameters = data.split(" ");
                 int nbMessages = Integer.parseInt(parameters[0]);
-                int parsed_id = Integer.parseInt(parameters[1]);
-                if (parsed_id >= 0 && parsed_id <= Byte.MAX_VALUE) {
-                    byte id = (byte) parsed_id;
-                    return new PerfectLinkConfig(nbMessages, id);
-                }
+                int receiverId = Integer.parseInt(parameters[1]);
+                return new PerfectLinkConfig(nbMessages, receiverId);
             }
         } catch (NumberFormatException e) {
             System.err.println("Error occurred parse the parameters of the config");
@@ -51,9 +48,9 @@ public class ConfigParser {
 
     public class PerfectLinkConfig {
         private final int nbMessages;
-        private final byte receiverId;
+        private final int receiverId;
 
-        public PerfectLinkConfig(int nbMessages, byte receiverId) {
+        public PerfectLinkConfig(int nbMessages, int receiverId) {
             this.nbMessages = nbMessages;
             this.receiverId = receiverId;
         }
@@ -62,7 +59,7 @@ public class ConfigParser {
             return nbMessages;
         }
 
-        public byte getReceiverId() {
+        public int getReceiverId() {
             return receiverId;
         }
 

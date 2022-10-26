@@ -10,11 +10,11 @@ import cs451.ConfigParser.PerfectLinkConfig;
 
 public class Receiver implements Deliverable, Runnable {
     private final AtomicReference<StringBuilder> logBuilder;
-    private final byte myId;
+    private final int myId;
     private final ConfigParser configParser;
     private final PerfectLink link;
 
-    public Receiver(AtomicReference<StringBuilder> logBuilder, byte myId, Map<Byte, Host> hostsMap,
+    public Receiver(AtomicReference<StringBuilder> logBuilder, int myId, Map<Integer, Host> hostsMap,
             ConfigParser configParser,
             AtomicReference<DatagramSocket> socket)
             throws UnknownHostException, SocketException {

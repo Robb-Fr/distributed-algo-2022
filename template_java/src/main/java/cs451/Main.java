@@ -44,9 +44,9 @@ public class Main {
         try {
             System.out.println("Doing some initialization\n");
             AtomicReference<StringBuilder> logBuilder = new AtomicReference<>(new StringBuilder(""));
-            Map<Byte, Host> hostsMap = parser.hostsMap();
+            Map<Integer, Host> hostsMap = parser.hostsMap();
             ConfigParser configParser = parser.configParser();
-            byte myId = parser.myByteId();
+            int myId = parser.myId();
             Sender sender = new Sender(logBuilder, myId, hostsMap, configParser);
             // sender gives reference to socket as the process will have to use the same
             // socket for their PL (cannot open 2 sockets for same host)

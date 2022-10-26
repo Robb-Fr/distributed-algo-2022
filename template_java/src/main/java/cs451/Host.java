@@ -7,18 +7,13 @@ public class Host {
 
     private static final String IP_START_REGEX = "/";
 
-    private byte id;
+    private int id;
     private String ip;
     private int port = -1;
 
     public boolean populate(String idString, String ipString, String portString) {
         try {
-            Integer parsed_id = Integer.parseInt(idString);
-            if (parsed_id < 0 || parsed_id > Byte.MAX_VALUE) {
-                System.err.println("Process id should fit in one byte");
-                return false;
-            }
-            id = parsed_id.byteValue();
+            id = Integer.parseInt(idString);
 
             String ipTest = InetAddress.getByName(ipString).toString();
             if (ipTest.startsWith(IP_START_REGEX)) {
@@ -46,7 +41,7 @@ public class Host {
         return true;
     }
 
-    public byte getId() {
+    public int getId() {
         return id;
     }
 
