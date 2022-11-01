@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 
-public class PerfectLink implements Closeable {
+public class PerfectLink implements Closeable, SocketGiver {
     private final AtomicReference<DatagramSocket> socket;
     private final int myId;
     private final Host thisHost;
@@ -114,6 +114,7 @@ public class PerfectLink implements Closeable {
 
     }
 
+    @Override
     public AtomicReference<DatagramSocket> getSocket() {
         return socket;
     }
@@ -150,9 +151,11 @@ public class PerfectLink implements Closeable {
      * Primitive for receiving a message and sending an ACK on correct reception but
      * without the Validity property
      * 
-     * @param ackExpectedForMsg : indicates for which message id we are trying to receive an
-     *                  ACK for. If we just receive any message to be delivered we
-     *                  indicate a negative value
+     * @param ackExpectedForMsg : indicates for which message id we are trying to
+     *                          receive an
+     *                          ACK for. If we just receive any message to be
+     *                          delivered we
+     *                          indicate a negative value
      * @return : the received message if correctly received
      */
     private Message receiveMessage(int ackExpectedForMsg) {
