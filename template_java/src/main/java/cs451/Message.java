@@ -40,6 +40,8 @@ public class Message implements Serializable {
 
     private final int id;
 
+    private final int sourceId;
+
     private final int senderId;
 
     private final PayloadType type;
@@ -55,16 +57,35 @@ public class Message implements Serializable {
             throw new IllegalArgumentException("You cannot create a message with null fields");
         }
         this.id = id;
+        this.sourceId = senderId;
         this.senderId = senderId;
         this.type = type;
+    }
+
+    public Message(int id, int sourceId, int senderId, PayloadType type) {
+        if (type == null) {
+            throw new IllegalArgumentException("You cannot create a message with null fields");
+        }
+        this.id = id;
+        this.sourceId = sourceId;
+        this.senderId = senderId;
+        this.type = type;
+    }
+
+    public Message withUpdatedSender(int newSenderId) {
+        return new Message(id, sourceId, newSenderId, type);
     }
 
     public int getId() {
         return id;
     }
 
+    public int getSourceId() {
+        return sourceId;
+    }
+
     public int getSenderId() {
-        return this.senderId;
+        return senderId;
     }
 
     public boolean isAck() {
@@ -114,11 +135,10 @@ public class Message implements Serializable {
 
     @Override
     public int hashCode() {
-        // uses id and sender id to identify a message
         final int prime = 31;
         int result = 1;
         result = prime * result + id;
-        result = prime * result + senderId;
+        result = prime * result + sourceId;
         return result;
     }
 
@@ -133,7 +153,7 @@ public class Message implements Serializable {
         Message other = (Message) obj;
         if (id != other.id)
             return false;
-        if (senderId != other.senderId)
+        if (sourceId != other.sourceId)
             return false;
         return true;
     }
