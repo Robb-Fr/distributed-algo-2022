@@ -7,12 +7,13 @@
 			"command": "${workspaceFolder}/template_java/build.sh",
 			"group": {
 				"kind": "build",
-				"isDefault": true,
+				"isDefault": true
 			},
 			"presentation": {
 				"reveal": "always",
-				"panel": "shared",
+				"panel": "shared"
 			},
+			"problemMatcher": []
 		}
 	]
 }
