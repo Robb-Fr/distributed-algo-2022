@@ -1,8 +1,11 @@
-package cs451;
+package cs451.Parsers;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import cs451.Constants;
+import cs451.Host;
 
 public class Parser {
 
