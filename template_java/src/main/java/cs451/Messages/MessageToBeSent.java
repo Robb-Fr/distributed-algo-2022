@@ -1,15 +1,14 @@
 package cs451.Messages;
 
 import cs451.Constants;
-import cs451.Host;
 
 public class MessageToBeSent {
     private final Message message;
     private final byte[] serializedMsg;
-    private final Host dest;
+    private final int dest;
 
-    public MessageToBeSent(Message m, Host dest) {
-        if (m == null || dest == null) {
+    public MessageToBeSent(Message m, int dest) {
+        if (m == null) {
             throw new IllegalArgumentException("Cannot build MessageToBeSent with null argument");
         }
 
@@ -33,7 +32,7 @@ public class MessageToBeSent {
         return serializedMsg;
     }
 
-    public Host getDest() {
+    public int getDest() {
         return dest;
     }
 }
