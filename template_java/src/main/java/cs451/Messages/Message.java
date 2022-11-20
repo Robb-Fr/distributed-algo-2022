@@ -8,8 +8,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
-import cs451.Host;
-
 public class Message implements Serializable {
     public enum PayloadType {
         CONTENT,
@@ -98,15 +96,15 @@ public class Message implements Serializable {
         return new Message(newId, sourceId, senderId, type);
     }
 
-    public Message ackForThisMessage(Host senderOfThisAck) {
-        return new Message(id, sourceId, senderOfThisAck.getId(), PayloadType.ACK);
+    public Message ackForThisMessage(int idOfSenderOfThisAck) {
+        return new Message(id, sourceId, idOfSenderOfThisAck, PayloadType.ACK);
     }
 
     public MessageTupleWithSender tupleWithSender() {
         return new MessageTupleWithSender(id, sourceId, senderId, type);
     }
 
-    public MessageToBeSent preparedForSending(Host dest) {
+    public MessageToBeSent preparedForSending(int dest) {
         return new MessageToBeSent(this, dest);
     }
 
