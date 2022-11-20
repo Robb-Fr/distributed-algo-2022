@@ -20,11 +20,17 @@ public class Constants {
 
     // max datagram length for not breaking network
     // https://stackoverflow.com/questions/1098897/what-is-the-largest-safe-udp-packet-size-on-the-internet
-    public static final int MAX_DATAGRAM_LENGTH = 576;
+    public static final int MAX_DATAGRAM_LENGTH = 256;
 
     public static final int SLEEP_BEFORE_RESEND = 0;
 
     public static final int SLEEP_BEFORE_RECEIVE = 0;
 
-    public static final int SOCKET_TIMEOUT = 100;
+    public static final int SOCKET_TIMEOUT = 1;
+
+    public static final int SLEEP_BEFORE_NEXT_POLL = 2;
+
+    public static final long TIME_BEFORE_FLUSH = 2000;
+
+    public static final int MAX_OUT_OF_ORDER_DELIVERY = 8;
 }
