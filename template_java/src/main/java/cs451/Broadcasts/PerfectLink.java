@@ -83,21 +83,6 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
         toSend.add(message.preparedForSending(dest));
     }
 
-    /**
-     * Implements the delivery of a perfect link to ensure the message is delivered
-     * to the parent with the Validity, No duplication and No creation properties.
-     */
-    public void receiveAndDeliver() {
-        if (type != ActorType.RECEIVER) {
-            throw new IllegalStateException("Sender cannot deliver messages");
-        }
-        Message m = receiveMessage();
-        if (m != null && !(delivered.contains(m.tupleWithSender())) && !m.isAck()) {
-            parent.deliver(m);
-            delivered.add(m.tupleWithSender());
-        }
-    }
-
     @Override
     public void close() {
         socket.get().close();
@@ -149,6 +134,21 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
     public void flush(Host host, int deliveredUntil) {
         delivered.flush(host, deliveredUntil);
         plAcked.flush(host, deliveredUntil);
+    }
+
+    /**
+     * Implements the delivery of a perfect link to ensure the message is delivered
+     * to the parent with the Validity, No duplication and No creation properties.
+     */
+    private void receiveAndDeliver() {
+        if (type != ActorType.RECEIVER) {
+            throw new IllegalStateException("Sender cannot deliver messages");
+        }
+        Message m = receiveMessage();
+        if (m != null && !(delivered.contains(m.tupleWithSender())) && !m.isAck()) {
+            parent.deliver(m);
+            delivered.add(m.tupleWithSender());
+        }
     }
 
     /**
