@@ -1,13 +1,16 @@
 package cs451;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import cs451.Messages.LogsBuilder;
+import cs451.Parsers.ConfigParser;
+import cs451.Parsers.Parser;
+import cs451.States.PlState;
+import cs451.States.UrbSate;
 
 public class Main {
 
@@ -41,22 +44,32 @@ public class Main {
         System.out.println(parser.config() + "\n");
 
         // running code for the assignment
+        System.out.println("Doing some initialization\n");
+
+        System.out.println("Creating output file");
+        final LogsBuilder logsBuilder = new LogsBuilder(parser.output());
+        final Map<Integer, Host> hostsMap = parser.hostsMap();
+        final ConfigParser configParser = parser.configParser();
+        final int myId = parser.myId();
+
         try {
-            System.out.println("Doing some initialization\n");
-            AtomicReference<StringBuilder> logBuilder = new AtomicReference<>(new StringBuilder(""));
-            Map<Integer, Host> hostsMap = parser.hostsMap();
-            ConfigParser configParser = parser.configParser();
-            int myId = parser.myId();
-            Sender sender = new Sender(logBuilder, myId, hostsMap, configParser);
-            // sender gives reference to socket as the process will have to use the same
-            // socket for their PL (cannot open 2 sockets for same host)
-            AtomicReference<DatagramSocket> socket = sender.getSocket();
-            Receiver receiver = new Receiver(logBuilder, myId, hostsMap, configParser, socket);
+            // Creates the sender
+            Sender sender = new Sender(logsBuilder, myId, hostsMap, configParser);
+            PlState plState = sender.getPlState();
+            UrbSate urbSate = sender.getUrbState();
+            ConcurrentHashMap<Host, AtomicInteger> fifoNext = sender.getFifoNext();
+
+            // Creates the receiver
+            Receiver receiver = new Receiver(parser.output(), logsBuilder, myId, hostsMap, configParser,
+                    plState, urbSate, fifoNext);
+
+            // Prepares threads to be started
             Thread senderThread = new Thread(sender);
             Thread receiverThread = new Thread(receiver);
-            initSignalHandlers(logBuilder, parser.output(), senderThread, receiverThread);
+            initSignalHandlers(logsBuilder, parser.output(), senderThread, receiverThread);
 
             System.out.println("Broadcasting and delivering messages...\n");
+
             senderThread.start();
             receiverThread.start();
         } catch (UnknownHostException | SocketException e) {
@@ -73,7 +86,7 @@ public class Main {
         }
     }
 
-    private static void handleSignal(AtomicReference<StringBuilder> logBuilder, String output, Thread sender,
+    private static void handleSignal(LogsBuilder logsBuilder, String output, Thread sender,
             Thread receiver) {
         // immediately stop network packet processing
         System.out.println("Immediately stopping network packet processing.");
@@ -82,24 +95,15 @@ public class Main {
 
         // https://www.geeksforgeeks.org/java-program-to-write-into-a-file/
         System.out.println("Writing output.");
-        try {
-            BufferedWriter f_writer = new BufferedWriter(new FileWriter(output));
-            f_writer.append(logBuilder.get());
-            // flush the buffer to make sure everything is written
-            f_writer.flush();
-            f_writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.err.println("Failed to write output");
-        }
+        logsBuilder.tryFlush(true);
     }
 
-    private static void initSignalHandlers(AtomicReference<StringBuilder> logBuilder, String output, Thread sender,
+    private static void initSignalHandlers(LogsBuilder logsBuilder, String output, Thread sender,
             Thread receiver) {
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
-                handleSignal(logBuilder, output, sender, receiver);
+                handleSignal(logsBuilder, output, sender, receiver);
             }
         });
     }
