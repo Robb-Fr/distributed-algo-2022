@@ -26,7 +26,7 @@ import java.net.InetSocketAddress;
 public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable {
     private final AtomicReference<DatagramSocket> socket;
     private final Host thisHost;
-    private final Map<Integer, Host> hosts;
+    private final Map<Integer, Host> hostsMap;
     private final Deliverable parent;
     private final ConcurrentLowMemoryMsgSet<MessageTupleWithSender> delivered;
     private final ConcurrentLowMemoryMsgSet<MessageTupleWithSender> plAcked;
@@ -40,8 +40,8 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
         if (hostsMap == null) {
             throw new IllegalArgumentException("A sender cannot have null self host or hosts map");
         }
-        this.hosts = hostsMap;
-        this.thisHost = this.hosts.get(myId);
+        this.hostsMap = hostsMap;
+        this.thisHost = this.hostsMap.get(myId);
         InetAddress thisHostIp = InetAddress.getByName(this.thisHost.getIp());
         this.socket = new AtomicReference<DatagramSocket>(new DatagramSocket(thisHost.getPort(), thisHostIp));
         this.socket.get().setSoTimeout(Constants.SOCKET_TIMEOUT);
@@ -61,8 +61,8 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
             throw new IllegalArgumentException(
                     "Cannot have null arguments to constructor");
         }
-        this.hosts = hostsMap;
-        this.thisHost = this.hosts.get(myId);
+        this.hostsMap = hostsMap;
+        this.thisHost = this.hostsMap.get(myId);
         this.socket = state.getPlSocket();
         this.plAcked = state.getPlAcked();
         this.toSend = state.getToSend();
@@ -76,8 +76,8 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
      * "perfect"
      * Validity, No duplication, No Creation
      */
-    public void addToSend(Message message, Host dest) {
-        if (message == null || dest == null) {
+    public void addToSend(Message message, int dest) {
+        if (message == null) {
             throw new IllegalArgumentException("Cannot send with null arguments");
         }
         toSend.add(message.preparedForSending(dest));
@@ -99,7 +99,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
                         Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
                     } else {
                         Message m = mToSend.getMessage();
-                        Host dest = mToSend.getDest();
+                        int dest = mToSend.getDest();
                         if (m.isAck()) {
                             sendMessage(mToSend);
                         } else if (!plAcked.contains(m.ackForThisMessage(dest).tupleWithSender())) {
@@ -159,7 +159,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
             throw new IllegalArgumentException(
                     "Cannot send null message or message to null host");
         }
-        Host dest = message.getDest();
+        Host dest = hostsMap.get(message.getDest());
         byte[] msgBytes = message.getSerializedMsg();
         InetSocketAddress socketDest = new InetSocketAddress(dest.getInetAddress(), dest.getPort());
         DatagramPacket packet = new DatagramPacket(msgBytes, msgBytes.length, socketDest);
@@ -196,9 +196,9 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
                 plAcked.add(m.tupleWithSender());
             } else {
                 // if the received message is not an ACK itself, we can send an ACK
-                addToSend(m.ackForThisMessage(thisHost), hosts.get(m.getSenderId()));
+                addToSend(m.ackForThisMessage(thisHost.getId()), m.getSenderId());
+                return m;
             }
-            return m;
         }
         return null;
     }
