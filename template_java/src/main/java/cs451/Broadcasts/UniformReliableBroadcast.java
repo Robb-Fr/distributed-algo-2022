@@ -178,7 +178,6 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
                 urbAck.remove(m);
             }
         });
-        System.gc();
     }
 
 }
