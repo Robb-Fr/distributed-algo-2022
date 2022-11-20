@@ -51,7 +51,7 @@ public class BestEffortBroadcast implements Deliverable, PlStateGiver, Flushable
         if (type != ActorType.SENDER) {
             throw new IllegalStateException("You need to be a sender to broadcast");
         }
-        for (Host host : hostsMap.values()) {
+        for (int host : hostsMap.keySet()) {
             link.addToSend(m, host);
         }
     }
