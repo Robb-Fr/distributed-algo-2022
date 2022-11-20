@@ -88,4 +88,8 @@ public class Parser {
         return configParser;
     }
 
+    public long getPid() {
+        return pid;
+    }
+
 }
