@@ -22,9 +22,9 @@ public class Receiver implements Deliverable, Runnable {
     private final FifoUniformReliableBroadcast fifo;
     private final ConcurrentLinkedQueue<Message> toDeliver = new ConcurrentLinkedQueue<>();
 
-    public Receiver(String output, LogsBuilder logsBuilder, int myId, Map<Integer, Host> hostsMap,
+    public Receiver(String output, LogsBuilder logsBuilder, short myId, Map<Short, Host> hostsMap,
             ConfigParser configParser, PlState plState, UrbSate urbState,
-            ConcurrentHashMap<Host, AtomicInteger> fifoNext)
+            ConcurrentHashMap<Short, AtomicInteger> fifoNext)
             throws UnknownHostException, SocketException {
         this.logsBuilder = logsBuilder;
         this.configParser = configParser;

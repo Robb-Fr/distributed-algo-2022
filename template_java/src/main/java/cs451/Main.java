@@ -48,16 +48,16 @@ public class Main {
 
         System.out.println("Creating output file");
         final LogsBuilder logsBuilder = new LogsBuilder(parser.output());
-        final Map<Integer, Host> hostsMap = parser.hostsMap();
+        final Map<Short, Host> hostsMap = parser.hostsMap();
         final ConfigParser configParser = parser.configParser();
-        final int myId = parser.myId();
+        final short myId = parser.myId();
 
         try {
             // Creates the sender
             Sender sender = new Sender(logsBuilder, myId, hostsMap, configParser);
             PlState plState = sender.getPlState();
             UrbSate urbSate = sender.getUrbState();
-            ConcurrentHashMap<Host, AtomicInteger> fifoNext = sender.getFifoNext();
+            ConcurrentHashMap<Short, AtomicInteger> fifoNext = sender.getFifoNext();
 
             // Creates the receiver
             Receiver receiver = new Receiver(parser.output(), logsBuilder, myId, hostsMap, configParser,

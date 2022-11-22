@@ -17,10 +17,9 @@ import cs451.Constants;
 public class FifoUniformReliableBroadcast implements Deliverable, PlStateGiver, UrbStateGiver {
     private final UniformReliableBroadcast urb;
     private AtomicInteger lsn = new AtomicInteger(0);
-    private final Map<Integer, Host> hostsMap;
     private final int nbHosts;
     private final Deliverable parent;
-    private final ConcurrentHashMap<Host, AtomicInteger> next;
+    private final ConcurrentHashMap<Short, AtomicInteger> next;
     private final ConcurrentHashMap.KeySetView<Message, Boolean> fifoPending;
     private long previousFlush = System.currentTimeMillis();
     private final ActorType type;
@@ -29,12 +28,11 @@ public class FifoUniformReliableBroadcast implements Deliverable, PlStateGiver, 
     /**
      * Constructor for a sender
      */
-    public FifoUniformReliableBroadcast(int myId, Map<Integer, Host> hostsMap)
+    public FifoUniformReliableBroadcast(short myId, Map<Short, Host> hostsMap)
             throws SocketException, UnknownHostException {
         this.urb = new UniformReliableBroadcast(myId, hostsMap);
-        this.hostsMap = hostsMap;
         this.next = new ConcurrentHashMap<>(hostsMap.size());
-        for (Host host : hostsMap.values()) {
+        for (short host : hostsMap.keySet()) {
             this.next.put(host, new AtomicInteger(1));
         }
         this.type = ActorType.SENDER;
@@ -47,11 +45,10 @@ public class FifoUniformReliableBroadcast implements Deliverable, PlStateGiver, 
      * Constructor for a receiver
      * 
      */
-    public FifoUniformReliableBroadcast(int myId, Map<Integer, Host> hostsMap, Deliverable parent, PlState plState,
-            UrbSate urbState, ConcurrentHashMap<Host, AtomicInteger> next) {
+    public FifoUniformReliableBroadcast(short myId, Map<Short, Host> hostsMap, Deliverable parent, PlState plState,
+            UrbSate urbState, ConcurrentHashMap<Short, AtomicInteger> next) {
         this.urb = new UniformReliableBroadcast(myId, hostsMap, this, plState, urbState);
         this.fifoPending = ConcurrentHashMap.newKeySet(hostsMap.size() * Constants.MAX_OUT_OF_ORDER_DELIVERY);
-        this.hostsMap = hostsMap;
         this.next = next;
         this.parent = parent;
         this.type = ActorType.RECEIVER;
@@ -85,7 +82,7 @@ public class FifoUniformReliableBroadcast implements Deliverable, PlStateGiver, 
         }
     }
 
-    public ConcurrentHashMap<Host, AtomicInteger> getFifoNext() {
+    public ConcurrentHashMap<Short, AtomicInteger> getFifoNext() {
         return next;
     }
 
@@ -98,7 +95,7 @@ public class FifoUniformReliableBroadcast implements Deliverable, PlStateGiver, 
             throw new IllegalStateException("Only a receiver can deliver messages");
         }
         fifoPending.add(m);
-        Host source = hostsMap.get(m.getSourceId());
+        short source = m.getSourceId();
         Message nextMsg = null;
         AtomicInteger nextForSource = next.get(source);
         // System.out.println("FIFO pending before : " + fifoPending);

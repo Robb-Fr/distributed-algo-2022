@@ -8,10 +8,10 @@ import cs451.Constants;
 import cs451.Host;
 
 public class ConcurrentLowMemoryMsgSet<M extends Message> {
-    private final ConcurrentHashMap<Integer, ConcurrentHashMap.KeySetView<Message, Boolean>> delivered;
-    private final ConcurrentHashMap<Integer, AtomicInteger> deliveredUntil;
+    private final ConcurrentHashMap<Short, ConcurrentHashMap.KeySetView<Message, Boolean>> delivered;
+    private final ConcurrentHashMap<Short, AtomicInteger> deliveredUntil;
 
-    public ConcurrentLowMemoryMsgSet(Map<Integer, Host> hostsMap) {
+    public ConcurrentLowMemoryMsgSet(Map<Short, Host> hostsMap) {
         this.delivered = new ConcurrentHashMap<>(hostsMap.size());
         this.deliveredUntil = new ConcurrentHashMap<>(hostsMap.size());
         for (Host host : hostsMap.values()) {
@@ -20,9 +20,9 @@ public class ConcurrentLowMemoryMsgSet<M extends Message> {
         }
     }
 
-    public synchronized void flush(Host host, int deliveredUntil) {
-        int newMax = this.deliveredUntil.get(host.getId()).updateAndGet(i -> Integer.max(i, deliveredUntil));
-        this.delivered.get(host.getId()).removeIf(m -> m.getId() < newMax);
+    public synchronized void flush(short host, int deliveredUntil) {
+        int newMax = this.deliveredUntil.get(host).updateAndGet(i -> Integer.max(i, deliveredUntil));
+        this.delivered.get(host).removeIf(m -> m.getId() < newMax);
     }
 
     public synchronized boolean add(M e) {
@@ -34,8 +34,7 @@ public class ConcurrentLowMemoryMsgSet<M extends Message> {
     }
 
     public synchronized boolean contains(M e) {
-        boolean deliveredAbove = deliveredUntil.get(e.getSourceId()).get() >= e.getId();
-        return deliveredAbove || delivered.get(e.getSourceId()).contains(e);
+        return deliveredUntil.get(e.getSourceId()).get() >= e.getId() || delivered.get(e.getSourceId()).contains(e);
     }
 
     @Override

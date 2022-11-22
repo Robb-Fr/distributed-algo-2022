@@ -59,7 +59,7 @@ public class Parser {
         System.exit(1);
     }
 
-    public int myId() {
+    public short myId() {
         return idParser.getId();
     }
 
@@ -67,9 +67,9 @@ public class Parser {
         return hostsParser.getHosts();
     }
 
-    public Map<Integer, Host> hostsMap() {
+    public Map<Short, Host> hostsMap() {
         List<Host> hosts = hosts();
-        Map<Integer, Host> hostsMap = new HashMap<>(hosts.size());
+        Map<Short, Host> hostsMap = new HashMap<>(hosts.size());
         for (Host host : hosts) {
             hostsMap.put(host.getId(), host);
         }

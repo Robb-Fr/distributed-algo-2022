@@ -17,13 +17,13 @@ import cs451.Constants;
 
 public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbStateGiver, Runnable, Flushable {
     private final BestEffortBroadcast beb;
-    private final int myId;
-    private final Map<Integer, Host> hostsMap;
+    private final short myId;
+    private final Map<Short, Host> hostsMap;
     private final int halfHosts;
     private final Deliverable parent;
     private final ConcurrentHashMap.KeySetView<Message, Boolean> urbPending;
     private final ConcurrentLowMemoryMsgSet<Message> urbDelivered;
-    private final ConcurrentHashMap<Message, ConcurrentHashMap.KeySetView<Integer, Boolean>> urbAck;
+    private final ConcurrentHashMap<Message, ConcurrentHashMap.KeySetView<Short, Boolean>> urbAck;
     private final ConcurrentLinkedQueue<Message> urbToBroadcast;
     private final ConcurrentLinkedQueue<Message> urbToDeliver;
     private final ActorType type;
@@ -32,7 +32,7 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
     /**
      * Constructor to be given to a sender
      */
-    public UniformReliableBroadcast(int myId, Map<Integer, Host> hostsMap)
+    public UniformReliableBroadcast(short myId, Map<Short, Host> hostsMap)
             throws SocketException, UnknownHostException {
         if (hostsMap == null) {
             throw new IllegalArgumentException("A sender cannot have null self host or hosts map");
@@ -53,7 +53,7 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
     /**
      * Constructor for an Urb to be given to a receiver
      */
-    public UniformReliableBroadcast(int myId, Map<Integer, Host> hostsMap,
+    public UniformReliableBroadcast(short myId, Map<Short, Host> hostsMap,
             Deliverable parent, PlState plState, UrbSate state) {
         if (parent == null || hostsMap == null || plState == null || state == null) {
             throw new IllegalArgumentException(
@@ -154,7 +154,7 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
     }
 
     @Override
-    public void flush(Host host, int deliveredUntil) {
+    public void flush(short host, int deliveredUntil) {
         urbDelivered.flush(host, deliveredUntil);
         beb.flush(host, deliveredUntil);
     }

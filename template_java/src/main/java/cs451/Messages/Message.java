@@ -40,9 +40,9 @@ public class Message implements Serializable {
 
     private final int id;
 
-    private final int sourceId;
+    private final short sourceId;
 
-    private final int senderId;
+    private final short senderId;
 
     private final PayloadType type;
 
@@ -55,7 +55,7 @@ public class Message implements Serializable {
      * @param sender : the sender of the message
      * @param type   : if the message is an ACK or a CONTENT type message
      */
-    public Message(int id, int senderId, PayloadType type) {
+    public Message(int id, short senderId, PayloadType type) {
         if (type == null) {
             throw new IllegalArgumentException("You cannot create a message with null fields");
         }
@@ -71,7 +71,7 @@ public class Message implements Serializable {
      * @param senderId : the id of the host actually forwarding this message
      * @param type     : either ACK or CONTENT type
      */
-    public Message(int id, int sourceId, int senderId, PayloadType type) {
+    public Message(int id, short sourceId, short senderId, PayloadType type) {
         if (type == null) {
             throw new IllegalArgumentException("You cannot create a message with null fields");
         }
@@ -88,7 +88,7 @@ public class Message implements Serializable {
      * @param newSenderId : the id of the host that'll forward this message
      * @return
      */
-    public Message withUpdatedSender(int newSenderId) {
+    public Message withUpdatedSender(short newSenderId) {
         return new Message(id, sourceId, newSenderId, type);
     }
 
@@ -96,7 +96,7 @@ public class Message implements Serializable {
         return new Message(newId, sourceId, senderId, type);
     }
 
-    public Message ackForThisMessage(int idOfSenderOfThisAck) {
+    public Message ackForThisMessage(short idOfSenderOfThisAck) {
         return new Message(id, sourceId, idOfSenderOfThisAck, PayloadType.ACK);
     }
 
@@ -104,7 +104,7 @@ public class Message implements Serializable {
         return new MessageTupleWithSender(id, sourceId, senderId, type);
     }
 
-    public MessageToBeSent preparedForSending(int dest) {
+    public MessageToBeSent preparedForSending(short dest) {
         return new MessageToBeSent(this, dest);
     }
 
@@ -112,11 +112,11 @@ public class Message implements Serializable {
         return id;
     }
 
-    public int getSourceId() {
+    public short getSourceId() {
         return sourceId;
     }
 
-    public int getSenderId() {
+    public short getSenderId() {
         return senderId;
     }
 

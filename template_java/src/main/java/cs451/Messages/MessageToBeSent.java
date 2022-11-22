@@ -5,9 +5,9 @@ import cs451.Constants;
 public class MessageToBeSent {
     private final Message message;
     private final byte[] serializedMsg;
-    private final int dest;
+    private final short dest;
 
-    public MessageToBeSent(Message m, int dest) {
+    public MessageToBeSent(Message m, short dest) {
         if (m == null) {
             throw new IllegalArgumentException("Cannot build MessageToBeSent with null argument");
         }
@@ -32,7 +32,7 @@ public class MessageToBeSent {
         return serializedMsg;
     }
 
-    public int getDest() {
+    public short getDest() {
         return dest;
     }
 }

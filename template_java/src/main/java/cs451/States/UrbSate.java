@@ -10,11 +10,11 @@ import cs451.Messages.Message;
 public class UrbSate {
     private final ConcurrentHashMap.KeySetView<Message, Boolean> urbPending;
     private final ConcurrentLowMemoryMsgSet<Message> urbDelivered;
-    private final ConcurrentHashMap<Message, ConcurrentHashMap.KeySetView<Integer, Boolean>> urbAck;
+    private final ConcurrentHashMap<Message, ConcurrentHashMap.KeySetView<Short, Boolean>> urbAck;
     private final ConcurrentLinkedQueue<Message> urbToBroadcast;
 
     public UrbSate(ConcurrentHashMap.KeySetView<Message, Boolean> urbPending, ConcurrentLowMemoryMsgSet<Message> urbDelivered,
-            ConcurrentHashMap<Message, KeySetView<Integer, Boolean>> urbAck,
+            ConcurrentHashMap<Message, KeySetView<Short, Boolean>> urbAck,
             ConcurrentLinkedQueue<Message> urbToBroadcast) {
         if (urbPending == null || urbDelivered == null || urbAck == null || urbToBroadcast == null) {
             throw new IllegalArgumentException("Cannot make urbState with null argument");
@@ -33,7 +33,7 @@ public class UrbSate {
         return urbDelivered;
     }
 
-    public ConcurrentHashMap<Message, ConcurrentHashMap.KeySetView<Integer, Boolean>> getUrbAck() {
+    public ConcurrentHashMap<Message, ConcurrentHashMap.KeySetView<Short, Boolean>> getUrbAck() {
         return urbAck;
     }
 

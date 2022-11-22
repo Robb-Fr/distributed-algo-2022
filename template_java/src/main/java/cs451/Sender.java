@@ -19,11 +19,11 @@ import cs451.States.UrbStateGiver;
 
 public class Sender implements Runnable, UrbStateGiver, PlStateGiver {
     private final LogsBuilder logsBuilder;
-    private final int myId;
+    private final short myId;
     private final ConfigParser configParser;
     private final FifoUniformReliableBroadcast fifo;
 
-    public Sender(LogsBuilder logsBuilder, int myId, Map<Integer, Host> hostsMap,
+    public Sender(LogsBuilder logsBuilder, short myId, Map<Short, Host> hostsMap,
             ConfigParser config)
             throws UnknownHostException, SocketException {
         this.myId = myId;
@@ -32,7 +32,7 @@ public class Sender implements Runnable, UrbStateGiver, PlStateGiver {
         this.fifo = new FifoUniformReliableBroadcast(myId, hostsMap);
     }
 
-    public ConcurrentHashMap<Host, AtomicInteger> getFifoNext() {
+    public ConcurrentHashMap<Short, AtomicInteger> getFifoNext() {
         return fifo.getFifoNext();
     }
 

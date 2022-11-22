@@ -11,7 +11,7 @@ import cs451.States.PlStateGiver;
 
 public class BestEffortBroadcast implements Deliverable, PlStateGiver, Flushable {
     private final PerfectLink link;
-    private final Map<Integer, Host> hostsMap;
+    private final Map<Short, Host> hostsMap;
     private final Deliverable parent;
     private final ActorType type;
     private Thread plThread = null;
@@ -19,7 +19,7 @@ public class BestEffortBroadcast implements Deliverable, PlStateGiver, Flushable
     /**
      * Constructor for a Beb to be given to a sender
      */
-    public BestEffortBroadcast(int myId, Map<Integer, Host> hostsMap)
+    public BestEffortBroadcast(short myId, Map<Short, Host> hostsMap)
             throws SocketException, UnknownHostException {
         if (hostsMap == null) {
             throw new IllegalArgumentException("A sender cannot have null self host or hosts map or parent");
@@ -33,7 +33,7 @@ public class BestEffortBroadcast implements Deliverable, PlStateGiver, Flushable
     /**
      * Constructor for a Beb to be given to a receiver
      */
-    public BestEffortBroadcast(int myId, Map<Integer, Host> hostsMap, Deliverable parent, PlState plState) {
+    public BestEffortBroadcast(short myId, Map<Short, Host> hostsMap, Deliverable parent, PlState plState) {
         if (parent == null || hostsMap == null || plState == null) {
             throw new IllegalArgumentException(
                     "A receiver cannot have null parent or a null self host or a null socket reference or null hosts");
@@ -51,7 +51,7 @@ public class BestEffortBroadcast implements Deliverable, PlStateGiver, Flushable
         if (type != ActorType.SENDER) {
             throw new IllegalStateException("You need to be a sender to broadcast");
         }
-        for (int host : hostsMap.keySet()) {
+        for (short host : hostsMap.keySet()) {
             link.addToSend(m, host);
         }
     }
@@ -84,7 +84,7 @@ public class BestEffortBroadcast implements Deliverable, PlStateGiver, Flushable
     }
 
     @Override
-    public void flush(Host host, int deliveredUntil) {
+    public void flush(short host, int deliveredUntil) {
         link.flush(host, deliveredUntil);
     }
 

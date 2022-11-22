@@ -26,7 +26,7 @@ import java.net.InetSocketAddress;
 public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable {
     private final AtomicReference<DatagramSocket> socket;
     private final Host thisHost;
-    private final Map<Integer, Host> hostsMap;
+    private final Map<Short, Host> hostsMap;
     private final Deliverable parent;
     private final ConcurrentLowMemoryMsgSet<MessageTupleWithSender> delivered;
     private final ConcurrentLowMemoryMsgSet<MessageTupleWithSender> plAcked;
@@ -36,7 +36,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
     /**
      * Constructor for a perfect link belonging to a sender
      */
-    public PerfectLink(int myId, Map<Integer, Host> hostsMap) throws SocketException, UnknownHostException {
+    public PerfectLink(short myId, Map<Short, Host> hostsMap) throws SocketException, UnknownHostException {
         if (hostsMap == null) {
             throw new IllegalArgumentException("A sender cannot have null self host or hosts map");
         }
@@ -55,7 +55,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
     /**
      * Constructor for a perfect link belonging to a receiver
      */
-    public PerfectLink(int myId, Map<Integer, Host> hostsMap, Deliverable parent,
+    public PerfectLink(short myId, Map<Short, Host> hostsMap, Deliverable parent,
             PlState state) {
         if (parent == null || hostsMap == null || state == null) {
             throw new IllegalArgumentException(
@@ -76,7 +76,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
      * "perfect"
      * Validity, No duplication, No Creation
      */
-    public void addToSend(Message message, int dest) {
+    public void addToSend(Message message, short dest) {
         if (message == null) {
             throw new IllegalArgumentException("Cannot send with null arguments");
         }
@@ -99,7 +99,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
                         Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
                     } else {
                         Message m = mToSend.getMessage();
-                        int dest = mToSend.getDest();
+                        short dest = mToSend.getDest();
                         if (m.isAck()) {
                             sendMessage(mToSend);
                         } else if (!plAcked.contains(m.ackForThisMessage(dest).tupleWithSender())) {
@@ -131,7 +131,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
     }
 
     @Override
-    public void flush(Host host, int deliveredUntil) {
+    public void flush(short host, int deliveredUntil) {
         delivered.flush(host, deliveredUntil);
         plAcked.flush(host, deliveredUntil);
     }

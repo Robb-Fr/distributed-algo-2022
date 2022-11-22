@@ -3,7 +3,7 @@ package cs451.Messages;
 
 public class MessageTupleWithSender extends Message {
 
-    public MessageTupleWithSender(int id, int sourceId, int senderId, PayloadType type) {
+    public MessageTupleWithSender(int id, short sourceId, short senderId, PayloadType type) {
         super(id, sourceId, senderId, type);
     }
 
