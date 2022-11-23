@@ -14,9 +14,10 @@ public class ConcurrentLowMemoryMsgSet<M extends Message> {
     public ConcurrentLowMemoryMsgSet(Map<Short, Host> hostsMap) {
         this.delivered = new ConcurrentHashMap<>(hostsMap.size());
         this.deliveredUntil = new ConcurrentHashMap<>(hostsMap.size());
-        for (Host host : hostsMap.values()) {
-            this.delivered.put(host.getId(), ConcurrentHashMap.newKeySet(2 * Constants.MAX_OUT_OF_ORDER_DELIVERY));
-            this.deliveredUntil.put(host.getId(), new AtomicInteger(0));
+        int N = hostsMap.size();
+        for (short host : hostsMap.keySet()) {
+            this.delivered.put(host, ConcurrentHashMap.newKeySet(N * Constants.MAX_OUT_OF_ORDER_DELIVERY));
+            this.deliveredUntil.put(host, new AtomicInteger(0));
         }
     }
 

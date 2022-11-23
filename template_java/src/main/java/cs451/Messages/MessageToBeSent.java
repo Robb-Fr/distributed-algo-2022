@@ -16,7 +16,7 @@ public class MessageToBeSent {
         if (msgBytes == null) {
             throw new IllegalArgumentException("Could not serialize message m");
         }
-        if (msgBytes.length >= Constants.MAX_DATAGRAM_LENGTH) {
+        if (msgBytes.length != Constants.SERIALIZED_MSG_SIZE) {
             throw new IndexOutOfBoundsException("Sent packet exceeds maximum accepted packet size");
         }
         this.serializedMsg = msgBytes;

@@ -18,19 +18,25 @@ public class Constants {
     // indexes for config
     public static final int CONFIG_VALUE = 6;
 
-    // max datagram length for not breaking network
-    // https://stackoverflow.com/questions/1098897/what-is-the-largest-safe-udp-packet-size-on-the-internet
-    public static final int MAX_DATAGRAM_LENGTH = 224;
+    public static final int SERIALIZED_MSG_SIZE = 9;
 
-    public static final int SLEEP_BEFORE_RESEND = 0;
+    public static final int PL_SLEEP_BEFORE_RESEND = 1;
 
-    public static final int SLEEP_BEFORE_RECEIVE = 0;
+    public static final int URB_SLEEP_BEFORE_RESEND = 5;
+
+    public static final int FIFO_SLEEP_BEFORE_RESEND = 10;
+
+    public static final int URB_SLEEP_BEFORE_NEXT_POLL = 10;
+
+    public static final int RECEIVER_SLEEP_BEFORE_NEXT_POLL = 20;
+
+    public static final int THRESHOLD_NB_HOST_FOR_BACK_OFF = 32;
 
     public static final int SOCKET_TIMEOUT = 1;
 
-    public static final int SLEEP_BEFORE_NEXT_POLL = 1;
-
     public static final long TIME_BEFORE_FLUSH = 2000;
 
-    public static final int MAX_OUT_OF_ORDER_DELIVERY = 8;
+    public static final int MAX_OUT_OF_ORDER_DELIVERY = 7;
+
+    public static final byte[] EMPTY_MESSAGE = new byte[SERIALIZED_MSG_SIZE];
 }

@@ -88,15 +88,18 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
         if (type != ActorType.RECEIVER) {
             throw new IllegalStateException("Sender cannot deliver messages");
         }
+        if (m == null) {
+            throw new IllegalArgumentException("Cannot deliver a null message");
+        }
+
         urbAck.putIfAbsent(m, ConcurrentHashMap.newKeySet(hostsMap.size()));
 
         urbAck.get(m).add(m.getSenderId());
         if (!urbPending.contains(m)) {
             urbPending.add(m);
-            Message newMessage = m.withUpdatedSender(myId);
             // the receiver should not re-broadcast the message itself in order to not block
             // and be able to deliver next message
-            urbToBroadcast.add(newMessage);
+            urbToBroadcast.add(m.withUpdatedSender(myId));
         }
         urbToDeliver.add(m);
     }
@@ -109,7 +112,7 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
                 while (true) {
                     Message m = urbToBroadcast.poll();
                     if (m == null) {
-                        Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+                        Thread.sleep(Constants.URB_SLEEP_BEFORE_RESEND);
                     } else {
                         beb.broadcast(m);
                     }
@@ -117,20 +120,18 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
                         tryFlushPendingAndAck();
                         previousFlush = System.currentTimeMillis();
                     }
-                    Thread.sleep(Constants.SLEEP_BEFORE_RESEND);
                 }
             } else if (type == ActorType.RECEIVER) {
                 while (true) {
                     Message m = urbToDeliver.poll();
-                    if (m == null) {
-                        Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
-                    } else {
+                    if (m != null) {
                         tryDeliver(m);
                         if (!urbDelivered.contains(m)) {
                             urbToDeliver.add(m);
                         }
+                    } else {
+                        Thread.sleep(Constants.URB_SLEEP_BEFORE_NEXT_POLL);
                     }
-                    Thread.sleep(Constants.SLEEP_BEFORE_RECEIVE);
                 }
             } else {
                 throw new IllegalStateException("Unhandled ActorType");
@@ -167,17 +168,12 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
                 && urbAck.get(m).size() > halfHosts) {
             urbDelivered.add(m);
             parent.deliver(m);
-            // System.out.println("URB delivered " + m);
         }
     }
 
     private synchronized void tryFlushPendingAndAck() {
         urbPending.removeIf(m -> urbDelivered.contains(m));
-        urbAck.keySet().forEach(m -> {
-            if (urbDelivered.contains(m)) {
-                urbAck.remove(m);
-            }
-        });
+        urbAck.keySet().removeIf(m -> urbDelivered.contains(m));
     }
 
 }

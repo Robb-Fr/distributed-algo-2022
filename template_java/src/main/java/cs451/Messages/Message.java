@@ -1,17 +1,31 @@
 package cs451.Messages;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
-public class Message implements Serializable {
+import cs451.Constants;
+
+public class Message {
     public enum PayloadType {
         CONTENT,
-        ACK
+        ACK;
+
+        public final static PayloadType[] values = PayloadType.values();
+
+        public byte byteValue() {
+            if (this.ordinal() > Byte.MAX_VALUE) {
+                throw new IllegalStateException("Cannot have more than 128 payload types");
+            }
+            return (byte) this.ordinal();
+        }
+
+        public static PayloadType fromByte(byte b) {
+            if (b < 0 || b >= values.length) {
+                throw new IllegalStateException("Cannot deserialize payload type");
+            }
+            return values[b];
+        }
     }
 
     /**
@@ -22,20 +36,16 @@ public class Message implements Serializable {
      * @return : the received message or null if deserialization failed
      */
     public static Message deserialize(byte[] bytes) {
-        // https://stackoverflow.com/questions/2836646/java-serializable-object-to-byte-array
-        try {
-            ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-            ObjectInput in = new ObjectInputStream(bis);
-            Message m = (Message) in.readObject();
-            in.close();
-            bis.close();
-            if (m instanceof Message && m.type != null) {
-                return m;
-            }
-        } catch (IOException | ClassNotFoundException e) {
-            // ignore the error, as often it's just having deserialized empty array
+        if (bytes.length != Constants.SERIALIZED_MSG_SIZE) {
+            throw new IllegalArgumentException("Cannot deserialize the received message");
         }
-        return null;
+        if (Arrays.equals(bytes, Constants.EMPTY_MESSAGE)) {
+            return null;
+        }
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        Message m = new Message(buffer.getInt(), buffer.getShort(), buffer.getShort(),
+                PayloadType.fromByte(buffer.get()));
+        return m;
     }
 
     private final int id;
@@ -59,6 +69,9 @@ public class Message implements Serializable {
         if (type == null) {
             throw new IllegalArgumentException("You cannot create a message with null fields");
         }
+        if (senderId == 0) {
+            throw new IllegalArgumentException("There");
+        }
         this.id = id;
         this.sourceId = senderId;
         this.senderId = senderId;
@@ -74,6 +87,9 @@ public class Message implements Serializable {
     public Message(int id, short sourceId, short senderId, PayloadType type) {
         if (type == null) {
             throw new IllegalArgumentException("You cannot create a message with null fields");
+        }
+        if (sourceId == 0) {
+            throw new IllegalArgumentException("There");
         }
         this.id = id;
         this.sourceId = sourceId;
@@ -143,21 +159,9 @@ public class Message implements Serializable {
      * @throws IOException
      */
     public byte[] serialize() {
-        try {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutputStream out = new ObjectOutputStream(bos);
-            out.writeObject(this);
-            out.flush();
-            byte[] serialized = bos.toByteArray();
-            out.close();
-            bos.close();
-            return serialized;
-        } catch (IOException e) {
-            System.err.println("An error occurred while serializing the received object");
-            e.printStackTrace();
-        }
-        return null;
-
+        ByteBuffer buffer = ByteBuffer.allocate(Constants.SERIALIZED_MSG_SIZE);
+        buffer.putInt(id).putShort(sourceId).putShort(senderId).put(type.byteValue());
+        return buffer.array();
     }
 
     @Override

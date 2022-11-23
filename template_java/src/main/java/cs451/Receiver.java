@@ -61,12 +61,11 @@ public class Receiver implements Deliverable, Runnable {
         while (true) {
             Message m = toDeliver.poll();
             if (m == null) {
-                Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+                Thread.sleep(Constants.RECEIVER_SLEEP_BEFORE_NEXT_POLL);
             } else {
                 logsBuilder.log("d " + m.getSourceId() + " " + m.getId() + "\n");
             }
             logsBuilder.tryFlush(false);
-            Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
         }
     }
 

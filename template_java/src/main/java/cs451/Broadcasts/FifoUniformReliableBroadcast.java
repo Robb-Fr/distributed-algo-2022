@@ -66,7 +66,7 @@ public class FifoUniformReliableBroadcast implements Deliverable, PlStateGiver, 
         while ((next.reduceValues(nbHosts,
                 val -> lsn.get() > val.get() + Constants.MAX_OUT_OF_ORDER_DELIVERY ? 0 : 1,
                 (val, acc) -> val + acc)) <= nbHosts / 2) {
-            Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+            Thread.sleep(Constants.FIFO_SLEEP_BEFORE_RESEND);
         }
         urb.broadcast(m);
     }
@@ -98,12 +98,9 @@ public class FifoUniformReliableBroadcast implements Deliverable, PlStateGiver, 
         short source = m.getSourceId();
         Message nextMsg = null;
         AtomicInteger nextForSource = next.get(source);
-        // System.out.println("FIFO pending before : " + fifoPending);
-        // System.out.println("FIFO Next before : " + next);
         while (fifoPending.remove(nextMsg = m.withUpdatedId(nextForSource.get()))) {
             nextForSource.getAndIncrement();
             parent.deliver(nextMsg);
-            // System.out.println("FIFO Delivered : " + nextMsg);
         }
         if ((System.currentTimeMillis() - previousFlush) > Constants.TIME_BEFORE_FLUSH) {
             urb.flush(source,
@@ -111,8 +108,6 @@ public class FifoUniformReliableBroadcast implements Deliverable, PlStateGiver, 
                             nextForSource.get() - 1 - 2 * Constants.MAX_OUT_OF_ORDER_DELIVERY));
             previousFlush = System.currentTimeMillis();
         }
-        // System.out.println("FIFO pending after : " + fifoPending);
-        // System.out.println("FIFO Next after : " + next);
     }
 
     @Override

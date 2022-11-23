@@ -32,6 +32,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
     private final ConcurrentLowMemoryMsgSet<MessageTupleWithSender> plAcked;
     private final ConcurrentLinkedQueue<MessageToBeSent> toSend;
     private final ActorType type;
+    private final int SLEEP_BEFORE_RESEND;
 
     /**
      * Constructor for a perfect link belonging to a sender
@@ -48,6 +49,9 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
         this.plAcked = new ConcurrentLowMemoryMsgSet<>(hostsMap);
         this.type = ActorType.SENDER;
         this.toSend = new ConcurrentLinkedQueue<>();
+        int sleep_val = Constants.PL_SLEEP_BEFORE_RESEND *
+                (hostsMap.size() / Constants.THRESHOLD_NB_HOST_FOR_BACK_OFF);
+        this.SLEEP_BEFORE_RESEND = sleep_val * sleep_val;
         this.parent = null;
         this.delivered = null;
     }
@@ -69,6 +73,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
         this.delivered = new ConcurrentLowMemoryMsgSet<>(hostsMap);
         this.parent = parent;
         this.type = ActorType.RECEIVER;
+        this.SLEEP_BEFORE_RESEND = -1;
     }
 
     /**
@@ -96,7 +101,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
                 while (true) {
                     MessageToBeSent mToSend = toSend.poll();
                     if (mToSend == null) {
-                        Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+                        Thread.sleep(Constants.PL_SLEEP_BEFORE_RESEND);
                     } else {
                         Message m = mToSend.getMessage();
                         short dest = mToSend.getDest();
@@ -107,13 +112,12 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
                             // we have not acked the message, we will have to re-check for it
                             toSend.add(mToSend);
                         }
+                        Thread.sleep(SLEEP_BEFORE_RESEND);
                     }
-                    Thread.sleep(Constants.SLEEP_BEFORE_RESEND);
                 }
             } else if (type == ActorType.RECEIVER) {
                 while (true) {
                     receiveAndDeliver();
-                    Thread.sleep(Constants.SLEEP_BEFORE_RECEIVE);
                 }
             } else {
                 throw new IllegalStateException("Unhandled ActorType");
@@ -178,7 +182,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
      */
     private Message receiveMessage() {
         // we should only have sent packets not exceeding this size
-        byte[] buf = new byte[Constants.MAX_DATAGRAM_LENGTH];
+        byte[] buf = new byte[Constants.SERIALIZED_MSG_SIZE];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
         try {
             socket.get().receive(packet);
@@ -188,6 +192,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
                 System.err.println("Error while receiving the packet");
                 e.printStackTrace();
             }
+            return null;
         }
         Message m = Message.deserialize(packet.getData());
         if (m != null) {
