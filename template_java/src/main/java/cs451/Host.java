@@ -1,6 +1,7 @@
 package cs451;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 
 public class Host {
@@ -10,6 +11,8 @@ public class Host {
     private short id;
     private String ip;
     private int port = -1;
+
+    private InetSocketAddress hostsSocket;
 
     public boolean populate(String idString, String ipString, String portString) {
         try {
@@ -38,6 +41,8 @@ public class Host {
             e.printStackTrace();
         }
 
+        this.hostsSocket = new InetSocketAddress(getInetAddress(), getPort());
+
         return true;
     }
 
@@ -49,7 +54,7 @@ public class Host {
         return ip;
     }
 
-    public InetAddress getInetAddress() {
+    private InetAddress getInetAddress() {
         try {
             InetAddress addr = InetAddress.getByName(this.ip);
             return addr;
@@ -59,6 +64,10 @@ public class Host {
             System.err.println("Unexpectedly unable to parse the IP address");
         }
         return null;
+    }
+
+    public InetSocketAddress getHostsSocket() {
+        return hostsSocket;
     }
 
     public int getPort() {

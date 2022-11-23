@@ -21,7 +21,6 @@ import java.net.DatagramSocket;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.InetSocketAddress;
 
 public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable {
     private final AtomicReference<DatagramSocket> socket;
@@ -104,15 +103,14 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
                         Thread.sleep(Constants.PL_SLEEP_BEFORE_RESEND);
                     } else {
                         Message m = mToSend.getMessage();
-                        short dest = mToSend.getDest();
                         if (m.isAck()) {
                             sendMessage(mToSend);
-                        } else if (!plAcked.contains(m.ackForThisMessage(dest).tupleWithSender())) {
+                        } else if (!plAcked.contains(mToSend.getAckForThisMessage())) {
                             sendMessage(mToSend);
                             // we have not acked the message, we will have to re-check for it
                             toSend.add(mToSend);
+                            Thread.sleep(SLEEP_BEFORE_RESEND);
                         }
-                        Thread.sleep(SLEEP_BEFORE_RESEND);
                     }
                 }
             } else if (type == ActorType.RECEIVER) {
@@ -165,8 +163,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
         }
         Host dest = hostsMap.get(message.getDest());
         byte[] msgBytes = message.getSerializedMsg();
-        InetSocketAddress socketDest = new InetSocketAddress(dest.getInetAddress(), dest.getPort());
-        DatagramPacket packet = new DatagramPacket(msgBytes, msgBytes.length, socketDest);
+        DatagramPacket packet = new DatagramPacket(msgBytes, msgBytes.length, dest.getHostsSocket());
         try {
             socket.get().send(packet);
         } catch (IOException e) {
