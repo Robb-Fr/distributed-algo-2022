@@ -124,6 +124,10 @@ public class Message {
         return new MessageToBeSent(this, dest);
     }
 
+    public MessageTupleWithSender ackForThisMsgTupleWithSender(short idOfSenderOfThisAck) {
+        return new MessageTupleWithSender(id, sourceId, idOfSenderOfThisAck, PayloadType.ACK);
+    }
+
     public int getId() {
         return id;
     }
