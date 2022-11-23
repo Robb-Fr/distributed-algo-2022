@@ -22,9 +22,9 @@ public class Constants {
 
     public static final int PL_SLEEP_BEFORE_RESEND = 1;
 
-    public static final int URB_SLEEP_BEFORE_RESEND = 5;
+    public static final int URB_SLEEP_BEFORE_RESEND = 10;
 
-    public static final int FIFO_SLEEP_BEFORE_RESEND = 10;
+    public static final int FIFO_SLEEP_BEFORE_RESEND = 20;
 
     public static final int URB_SLEEP_BEFORE_NEXT_POLL = 10;
 
@@ -34,7 +34,7 @@ public class Constants {
 
     public static final int SOCKET_TIMEOUT = 1;
 
-    public static final long TIME_BEFORE_FLUSH = 2000;
+    public static final long TIME_BEFORE_FLUSH = 2500;
 
     public static final int MAX_OUT_OF_ORDER_DELIVERY = 7;
 
