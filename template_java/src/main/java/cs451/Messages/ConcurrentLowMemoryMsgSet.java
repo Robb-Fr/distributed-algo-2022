@@ -34,7 +34,7 @@ public class ConcurrentLowMemoryMsgSet<M extends Message> {
         return delivered.get(e.getSourceId()).remove(e);
     }
 
-    public synchronized boolean contains(M e) {
+    public boolean contains(M e) {
         return deliveredUntil.get(e.getSourceId()).get() >= e.getId() || delivered.get(e.getSourceId()).contains(e);
     }
 
