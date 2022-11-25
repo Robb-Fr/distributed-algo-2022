@@ -114,7 +114,7 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
                 while (true) {
                     Message m = urbToBroadcast.poll();
                     if (m == null) {
-                        Thread.sleep(Constants.URB_SLEEP_BEFORE_RESEND);
+                        Thread.sleep(Constants.URB_SLEEP_BEFORE_NEXT_POLL);
                     } else {
                         beb.broadcast(m);
                     }
