@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import cs451.Host;
 import cs451.Messages.Message;
+import cs451.Messages.Message.PayloadType;
 import cs451.States.PlState;
 import cs451.States.PlStateGiver;
 import cs451.States.UrbSate;
@@ -62,17 +63,18 @@ public class FifoUniformReliableBroadcast implements Deliverable, PlStateGiver, 
         if (type != ActorType.SENDER) {
             throw new IllegalStateException("Only a sender can broadcast messages");
         }
-        lsn.getAndIncrement();
+        lsn.getAndSet(m.getId());
         while ((next.reduceValues(nbHosts,
                 val -> lsn.get() > val.get() + Constants.MAX_OUT_OF_ORDER_DELIVERY ? 0 : 1,
                 (val, acc) -> val + acc)) <= nbHosts / 2) {
             Thread.sleep(Constants.FIFO_SLEEP_BEFORE_RESEND);
         }
         urb.broadcast(m);
+        System.out.println("Fifo Broadcast " + m);
     }
 
     public void startUrb() {
-        urbThread = new Thread(urb);
+        urbThread = new Thread(urb, "URB " + type);
         urbThread.start();
     }
 
@@ -102,10 +104,12 @@ public class FifoUniformReliableBroadcast implements Deliverable, PlStateGiver, 
             nextForSource.getAndIncrement();
             parent.deliver(nextMsg);
         }
+        // System.out.println("FIFO pending " + fifoPending);
         if ((System.currentTimeMillis() - previousFlush) > Constants.TIME_BEFORE_FLUSH) {
-            urb.flush(source,
-                    Integer.max(0,
-                            nextForSource.get() - 1 - 2 * Constants.MAX_OUT_OF_ORDER_DELIVERY));
+            int newId = Integer.max(0,
+                    nextForSource.get() - 2);
+            urb.flush(source, new Message(0, source, m.getSenderId(), PayloadType.CONTENT),
+                    new Message(newId, source, m.getSenderId(), PayloadType.CONTENT));
             previousFlush = System.currentTimeMillis();
         }
     }

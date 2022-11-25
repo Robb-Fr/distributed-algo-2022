@@ -6,25 +6,25 @@ import java.util.Arrays;
 
 import cs451.Constants;
 
-public class Message {
+public class Message implements Comparable<Message> {
     public enum PayloadType {
         CONTENT,
         ACK;
 
         public final static PayloadType[] values = PayloadType.values();
 
-        public byte byteValue() {
-            if (this.ordinal() > Byte.MAX_VALUE) {
-                throw new IllegalStateException("Cannot have more than 128 payload types");
-            }
-            return (byte) this.ordinal();
-        }
-
         public static PayloadType fromByte(byte b) {
             if (b < 0 || b >= values.length) {
                 throw new IllegalStateException("Cannot deserialize payload type");
             }
             return values[b];
+        }
+
+        public byte byteValue() {
+            if (this.ordinal() > Byte.MAX_VALUE) {
+                throw new IllegalStateException("Cannot have more than 128 payload types");
+            }
+            return (byte) this.ordinal();
         }
     }
 
@@ -52,7 +52,7 @@ public class Message {
 
     private final short sourceId;
 
-    private final short senderId;
+    protected final short senderId;
 
     private final PayloadType type;
 
@@ -163,9 +163,8 @@ public class Message {
      * @throws IOException
      */
     public byte[] serialize() {
-        ByteBuffer buffer = ByteBuffer.allocate(Constants.SERIALIZED_MSG_SIZE);
-        buffer.putInt(id).putShort(sourceId).putShort(senderId).put(type.byteValue());
-        return buffer.array();
+        return ByteBuffer.allocate(Constants.SERIALIZED_MSG_SIZE).putInt(id).putShort(sourceId).putShort(senderId)
+                .put(type.byteValue()).array();
     }
 
     @Override
@@ -196,6 +195,11 @@ public class Message {
         if (sourceId != other.sourceId)
             return false;
         return true;
+    }
+
+    @Override
+    public int compareTo(Message o) {
+        return Short.compare(sourceId, o.sourceId) + (Integer.compare(id, o.id) << 8);
     }
 
 }

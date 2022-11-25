@@ -9,7 +9,7 @@ import cs451.Messages.Message;
 import cs451.States.PlState;
 import cs451.States.PlStateGiver;
 
-public class BestEffortBroadcast implements Deliverable, PlStateGiver, Flushable {
+public class BestEffortBroadcast implements Deliverable, PlStateGiver, Flushable<Message> {
     private final PerfectLink link;
     private final Map<Short, Host> hostsMap;
     private final Deliverable parent;
@@ -57,7 +57,7 @@ public class BestEffortBroadcast implements Deliverable, PlStateGiver, Flushable
     }
 
     public void startPl() {
-        plThread = new Thread(link);
+        plThread = new Thread(link, "PL " + type);
         plThread.start();
     }
 
@@ -84,8 +84,8 @@ public class BestEffortBroadcast implements Deliverable, PlStateGiver, Flushable
     }
 
     @Override
-    public void flush(short host, int deliveredUntil) {
-        link.flush(host, deliveredUntil);
+    public void flush(short host, Message deliveredFrom, Message deliveredUntil) {
+        link.flush(host, deliveredFrom.tupleWithSender(), deliveredUntil.tupleWithSender());
     }
 
 }

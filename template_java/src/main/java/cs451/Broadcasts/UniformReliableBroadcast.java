@@ -5,25 +5,29 @@ import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import cs451.Host;
 import cs451.Messages.ConcurrentLowMemoryMsgSet;
 import cs451.Messages.Message;
+import cs451.Messages.Message.PayloadType;
 import cs451.States.PlState;
 import cs451.States.PlStateGiver;
 import cs451.States.UrbSate;
 import cs451.States.UrbStateGiver;
 import cs451.Constants;
 
-public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbStateGiver, Runnable, Flushable {
+public class UniformReliableBroadcast
+        implements Deliverable, PlStateGiver, UrbStateGiver, Runnable, Flushable<Message> {
     private final BestEffortBroadcast beb;
     private final short myId;
     private final Map<Short, Host> hostsMap;
     private final int halfHosts;
     private final Deliverable parent;
-    private final ConcurrentHashMap.KeySetView<Message, Boolean> urbPending;
+    private final ConcurrentSkipListSet<Message> urbPending;
     private final ConcurrentLowMemoryMsgSet<Message> urbDelivered;
-    private final ConcurrentHashMap<Message, ConcurrentHashMap.KeySetView<Short, Boolean>> urbAck;
+    private final ConcurrentSkipListMap<Message, ConcurrentHashMap.KeySetView<Short, Boolean>> urbAck;
     private final ConcurrentLinkedQueue<Message> urbToBroadcast;
     private final ConcurrentLinkedQueue<Message> urbToDeliver;
     private final ConcurrentLinkedQueue<Message> urbToRetryDeliver = new ConcurrentLinkedQueue<>();
@@ -40,9 +44,9 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
             throw new IllegalArgumentException("A sender cannot have null self host or hosts map");
         }
         this.myId = myId;
-        this.urbPending = ConcurrentHashMap.newKeySet(Constants.MAX_OUT_OF_ORDER_DELIVERY);
+        this.urbPending = new ConcurrentSkipListSet<>();
         this.urbDelivered = new ConcurrentLowMemoryMsgSet<>(hostsMap);
-        this.urbAck = new ConcurrentHashMap<>(2 * Constants.MAX_OUT_OF_ORDER_DELIVERY);
+        this.urbAck = new ConcurrentSkipListMap<>();
         this.hostsMap = hostsMap;
         this.beb = new BestEffortBroadcast(myId, hostsMap);
         this.urbToBroadcast = new ConcurrentLinkedQueue<>();
@@ -95,7 +99,6 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
         }
 
         urbAck.putIfAbsent(m, ConcurrentHashMap.newKeySet(hostsMap.size()));
-
         urbAck.get(m).add(m.getSenderId());
         if (!urbPending.contains(m)) {
             urbPending.add(m);
@@ -117,10 +120,7 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
                         Thread.sleep(Constants.URB_SLEEP_BEFORE_NEXT_POLL);
                     } else {
                         beb.broadcast(m);
-                    }
-                    if ((System.currentTimeMillis() - previousFlush) > Constants.TIME_BEFORE_FLUSH) {
-                        tryFlushPendingAndAck();
-                        previousFlush = System.currentTimeMillis();
+                        System.out.println("URB Broadcast " + m);
                     }
                 }
             } else if (type == ActorType.RECEIVER) {
@@ -164,9 +164,9 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
     }
 
     @Override
-    public void flush(short host, int deliveredUntil) {
-        urbDelivered.flush(host, deliveredUntil);
-        beb.flush(host, deliveredUntil);
+    public void flush(short host, Message deliveredFrom, Message deliveredUntil) {
+        urbDelivered.flush(host, deliveredFrom, deliveredUntil);
+        beb.flush(host, deliveredFrom, deliveredUntil);
     }
 
     private synchronized boolean tryDeliver(Message m) {
@@ -182,9 +182,14 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
         return false;
     }
 
-    private synchronized void tryFlushPendingAndAck() {
-        urbPending.removeIf(m -> urbDelivered.contains(m));
-        urbAck.keySet().removeIf(m -> urbDelivered.contains(m));
+    private synchronized void tryFlushPendingAndAck(Message lastDeliveredMessage) {
+        // urbPending.removeIf(m -> urbDelivered.contains(m));
+        // urbPending.headSet(lastDeliveredMessage).clear();
+        Message firstFromHost = new Message(0, lastDeliveredMessage.getSourceId(), PayloadType.CONTENT);
+        urbPending.subSet(firstFromHost, lastDeliveredMessage).clear();
+        // urbAck.keySet().removeIf(m -> urbDelivered.contains(m));
+        // urbAck.headMap(lastDeliveredMessage).clear();
+        urbAck.subMap(firstFromHost, lastDeliveredMessage).clear();
     }
 
 }

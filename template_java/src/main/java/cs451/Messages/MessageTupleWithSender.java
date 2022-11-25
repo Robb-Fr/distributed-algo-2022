@@ -1,6 +1,5 @@
 package cs451.Messages;
 
-
 public class MessageTupleWithSender extends Message {
 
     public MessageTupleWithSender(int id, short sourceId, short senderId, PayloadType type) {
@@ -33,6 +32,11 @@ public class MessageTupleWithSender extends Message {
         if (getSenderId() != other.getSenderId())
             return false;
         return true;
+    }
+
+    @Override
+    public int compareTo(Message o) {
+        return (Short.compare(senderId, o.senderId) << 16) + super.compareTo(o);
     }
 
 }

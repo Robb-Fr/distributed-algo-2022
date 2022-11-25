@@ -64,8 +64,8 @@ public class Main {
                     plState, urbSate, fifoNext);
 
             // Prepares threads to be started
-            Thread senderThread = new Thread(sender);
-            Thread receiverThread = new Thread(receiver);
+            Thread senderThread = new Thread(sender, "Sender");
+            Thread receiverThread = new Thread(receiver, "Receiver");
             initSignalHandlers(logsBuilder, parser.output(), senderThread, receiverThread);
 
             System.out.println("Broadcasting and delivering messages...\n");

@@ -6,7 +6,6 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicReference;
 
 import cs451.Host;
 import cs451.Messages.ConcurrentLowMemoryMsgSet;
@@ -22,9 +21,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.DatagramPacket;
 
-public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable {
-    private final AtomicReference<DatagramSocket> socket;
-    private final Host thisHost;
+public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable<MessageTupleWithSender> {
+    private final DatagramSocket socket;
+    private final short myId;
     private final Map<Short, Host> hostsMap;
     private final Deliverable parent;
     private final ConcurrentLowMemoryMsgSet<MessageTupleWithSender> delivered;
@@ -43,10 +42,11 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
             throw new IllegalArgumentException("A sender cannot have null self host or hosts map");
         }
         this.hostsMap = hostsMap;
-        this.thisHost = this.hostsMap.get(myId);
-        InetAddress thisHostIp = InetAddress.getByName(this.thisHost.getIp());
-        this.socket = new AtomicReference<DatagramSocket>(new DatagramSocket(thisHost.getPort(), thisHostIp));
-        this.socket.get().setSoTimeout(Constants.SOCKET_TIMEOUT);
+        this.myId = myId;
+        Host thisHost = hostsMap.get(myId);
+        InetAddress thisHostIp = InetAddress.getByName(thisHost.getIp());
+        this.socket = new DatagramSocket(thisHost.getPort(), thisHostIp);
+        this.socket.setSoTimeout(Constants.SOCKET_TIMEOUT);
         this.plAcked = new ConcurrentLowMemoryMsgSet<>(hostsMap);
         this.type = ActorType.SENDER;
         this.toSend = new ConcurrentLinkedQueue<>();
@@ -68,7 +68,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
                     "Cannot have null arguments to constructor");
         }
         this.hostsMap = hostsMap;
-        this.thisHost = this.hostsMap.get(myId);
+        this.myId = myId;
         this.socket = state.getPlSocket();
         this.plAcked = state.getPlAcked();
         this.toSend = state.getToSend();
@@ -93,7 +93,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
 
     @Override
     public void close() {
-        socket.get().close();
+        socket.close();
 
     }
 
@@ -141,9 +141,9 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
     }
 
     @Override
-    public void flush(short host, int deliveredUntil) {
-        delivered.flush(host, deliveredUntil);
-        plAcked.flush(host, deliveredUntil);
+    public void flush(short host, MessageTupleWithSender deliveredFrom, MessageTupleWithSender deliveredUntil) {
+        delivered.flush(host, deliveredFrom, deliveredUntil);
+        plAcked.flush(host, deliveredFrom, deliveredUntil);
     }
 
     /**
@@ -173,7 +173,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
         byte[] msgBytes = message.getSerializedMsg();
         DatagramPacket packet = new DatagramPacket(msgBytes, msgBytes.length, dest.getHostsSocket());
         try {
-            socket.get().send(packet);
+            socket.send(packet);
         } catch (IOException e) {
             System.err.println("Error while sending the message");
             e.printStackTrace();
@@ -190,7 +190,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
         byte[] buf = new byte[Constants.SERIALIZED_MSG_SIZE];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
         try {
-            socket.get().receive(packet);
+            socket.receive(packet);
         } catch (IOException e) {
             // packet not received, report only the non Timeout error
             if (!(e instanceof SocketTimeoutException)) {
@@ -204,9 +204,11 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
             // we check we received an actual message
             if (m.isAck()) {
                 plAcked.add(m.tupleWithSender());
+                return null;
             } else {
                 // if the received message is not an ACK itself, we can send an ACK
-                addToSend(m.ackForThisMessage(thisHost.getId()), m.getSenderId());
+                addToSend(m.ackForThisMessage(myId), m.getSenderId());
+                // toSend.add((m.ackForThisMessage(myId).preparedForSending(m.getSenderId())));
                 return m;
             }
         }
