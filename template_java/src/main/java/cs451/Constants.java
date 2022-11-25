@@ -20,17 +20,17 @@ public class Constants {
 
     public static final int SERIALIZED_MSG_SIZE = 9;
 
-    public static final int PL_SLEEP_BEFORE_RESEND = 2;
+    public static final int PL_SLEEP_BEFORE_RESEND = 8;
 
     public static final int PL_SLEEP_BEFORE_RETRY = 20;
 
     public static final int FIFO_SLEEP_BEFORE_RESEND = 5;
 
-    public static final int URB_SLEEP_BEFORE_NEXT_POLL = 10;
+    public static final int URB_SLEEP_BEFORE_NEXT_POLL = 20;
 
     public static final int RECEIVER_SLEEP_BEFORE_NEXT_POLL = 10;
 
-    public static final int THRESHOLD_NB_HOST_FOR_BACK_OFF = 16;
+    public static final int THRESHOLD_NB_HOST_FOR_BACK_OFF = 8;
 
     public static final int SOCKET_TIMEOUT = 1;
 

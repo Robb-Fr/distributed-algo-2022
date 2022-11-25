@@ -30,7 +30,9 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
     private final ConcurrentLowMemoryMsgSet<MessageTupleWithSender> delivered;
     private final ConcurrentLowMemoryMsgSet<MessageTupleWithSender> plAcked;
     private final ConcurrentLinkedQueue<MessageToBeSent> toSend;
+    private final ConcurrentLinkedQueue<MessageToBeSent> toRetry;
     private final ActorType type;
+    private long previousFlush = System.currentTimeMillis();
     private final int SLEEP_BEFORE_RESEND;
 
     /**
@@ -48,7 +50,8 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
         this.plAcked = new ConcurrentLowMemoryMsgSet<>(hostsMap);
         this.type = ActorType.SENDER;
         this.toSend = new ConcurrentLinkedQueue<>();
-        int sleep_val = Constants.PL_SLEEP_BEFORE_RESEND *
+        this.toRetry = new ConcurrentLinkedQueue<>();
+        int sleep_val = Constants.PL_SLEEP_BEFORE_RESEND +
                 (hostsMap.size() / Constants.THRESHOLD_NB_HOST_FOR_BACK_OFF);
         this.SLEEP_BEFORE_RESEND = sleep_val * sleep_val;
         this.parent = null;
@@ -73,6 +76,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
         this.parent = parent;
         this.type = ActorType.RECEIVER;
         this.SLEEP_BEFORE_RESEND = -1;
+        this.toRetry = null;
     }
 
     /**
@@ -103,13 +107,17 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
                         Thread.sleep(Constants.PL_SLEEP_BEFORE_RESEND);
                     } else {
                         Message m = mToSend.getMessage();
-                        if (m.isAck()) {
-                            sendMessage(mToSend);
-                        } else if (!plAcked.contains(mToSend.getAckForThisMessage())) {
-                            sendMessage(mToSend);
-                            // we have not acked the message, we will have to re-check for it
-                            toSend.add(mToSend);
-                            Thread.sleep(SLEEP_BEFORE_RESEND);
+                        sendMessage(mToSend);
+                        if (!m.isAck()) {
+                            toRetry.add(mToSend);
+                        }
+                        if ((System.currentTimeMillis() - previousFlush) > SLEEP_BEFORE_RESEND) {
+                            while ((mToSend = toRetry.poll()) != null) {
+                                if (!plAcked.contains(mToSend.getAckForThisMessage())) {
+                                    toSend.add(mToSend);
+                                }
+                            }
+                            previousFlush = System.currentTimeMillis();
                         }
                     }
                 }

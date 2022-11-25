@@ -26,8 +26,10 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
     private final ConcurrentHashMap<Message, ConcurrentHashMap.KeySetView<Short, Boolean>> urbAck;
     private final ConcurrentLinkedQueue<Message> urbToBroadcast;
     private final ConcurrentLinkedQueue<Message> urbToDeliver;
+    private final ConcurrentLinkedQueue<Message> urbToRetryDeliver = new ConcurrentLinkedQueue<>();
     private final ActorType type;
     private long previousFlush = System.currentTimeMillis();
+    private long previousRetryFlush = System.currentTimeMillis();
 
     /**
      * Constructor to be given to a sender
@@ -125,9 +127,16 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
                 while (true) {
                     Message m = urbToDeliver.poll();
                     if (m != null) {
-                        tryDeliver(m);
-                        if (!urbDelivered.contains(m)) {
-                            urbToDeliver.add(m);
+                        if (!urbDelivered.contains(m) && !tryDeliver(m)) {
+                            urbToRetryDeliver.add(m);
+                        }
+                        if ((System.currentTimeMillis() - previousRetryFlush) > Constants.URB_SLEEP_BEFORE_NEXT_POLL) {
+                            while ((m = urbToRetryDeliver.poll()) != null) {
+                                if (!tryDeliver(m)) {
+                                    urbToDeliver.add(m);
+                                }
+                            }
+                            previousFlush = System.currentTimeMillis();
                         }
                     } else {
                         Thread.sleep(Constants.URB_SLEEP_BEFORE_NEXT_POLL);
@@ -160,7 +169,7 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
         beb.flush(host, deliveredUntil);
     }
 
-    private synchronized void tryDeliver(Message m) {
+    private synchronized boolean tryDeliver(Message m) {
         if (m == null) {
             throw new IllegalArgumentException("Cannot deliver a null message");
         }
@@ -168,7 +177,9 @@ public class UniformReliableBroadcast implements Deliverable, PlStateGiver, UrbS
                 && urbAck.get(m).size() > halfHosts) {
             urbDelivered.add(m);
             parent.deliver(m);
+            return true;
         }
+        return false;
     }
 
     private synchronized void tryFlushPendingAndAck() {
