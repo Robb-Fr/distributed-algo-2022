@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
-import os, atexit
+import os, sys, atexit
 import textwrap
 import time
 import threading, subprocess
+import itertools
 
 
 import signal
@@ -16,10 +17,19 @@ from collections import defaultdict, OrderedDict
 
 PROCESSES_BASE_IP = 11000
 
+
+def positive_int(value):
+    ivalue = int(value)
+    if ivalue <= 0:
+        raise argparse.ArgumentTypeError("{} is not positive integer".format(value))
+    return ivalue
+
+
 class ProcessState(Enum):
     RUNNING = 1
     STOPPED = 2
     TERMINATED = 3
+
 
 class ProcessInfo:
     def __init__(self, handle):
@@ -62,6 +72,7 @@ class ProcessInfo:
 
         return False
 
+
 class AtomicSaturatedCounter:
     def __init__(self, saturation, initial=0):
         self._saturation = saturation
@@ -76,36 +87,78 @@ class AtomicSaturatedCounter:
             else:
                 return False
 
+
 class Validation:
     def __init__(self, procs, msgs):
         self.processes = procs
         self.messages = msgs
 
     def generatePerfectLinksConfig(self, directory):
-        hostsfile = os.path.join(directory, 'hosts')
-        configfile = os.path.join(directory, 'config')
+        hostsfile = os.path.join(directory, "hosts")
+        configfile = os.path.join(directory, "config")
 
-        with open(hostsfile, 'w') as hosts:
+        with open(hostsfile, "w") as hosts:
             for i in range(1, self.processes + 1):
-                hosts.write("{} localhost {}\n".format(i, PROCESSES_BASE_IP+i))
+                hosts.write("{} localhost {}\n".format(i, PROCESSES_BASE_IP + i))
 
-        with open(configfile, 'w') as config:
+        with open(configfile, "w") as config:
             config.write("{} 1\n".format(self.messages))
 
         return (hostsfile, configfile)
 
     def generateFifoConfig(self, directory):
-        hostsfile = os.path.join(directory, 'hosts')
-        configfile = os.path.join(directory, 'config')
+        hostsfile = os.path.join(directory, "hosts")
+        configfile = os.path.join(directory, "config")
 
-        with open(hostsfile, 'w') as hosts:
+        with open(hostsfile, "w") as hosts:
             for i in range(1, self.processes + 1):
-                hosts.write("{} localhost {}\n".format(i, PROCESSES_BASE_IP+i))
+                hosts.write("{} localhost {}\n".format(i, PROCESSES_BASE_IP + i))
 
-        with open(configfile, 'w') as config:
+        with open(configfile, "w") as config:
             config.write("{}\n".format(self.messages))
 
         return (hostsfile, configfile)
+
+
+class LatticeAgreementValidation:
+    def __init__(self, processes, proposals, max_proposal_size, distinct_values):
+        self.procs = processes
+        self.props = proposals
+        self.mps = max_proposal_size
+        self.dval = distinct_values
+
+    def generate(self, directory):
+        hostsfile = os.path.join(directory, "hosts")
+
+        with open(hostsfile, "w") as hosts:
+            for i in range(1, self.procs + 1):
+                hosts.write("{} localhost {}\n".format(i, PROCESSES_BASE_IP + i))
+
+        maxint = 2**31 - 1
+        seeded_rand = random.Random(42)
+        try:
+            values = seeded_rand.sample(range(0, maxint + 1), self.dval)
+        except ValueError:
+            print("Cannot have to many distinct values")
+            sys.exit(1)
+
+        configfiles = []
+        for pid in range(1, self.procs + 1):
+            configfile = os.path.join(directory, "proc{:02d}.config".format(pid))
+            configfiles.append(configfile)
+
+            with open(configfile, "w") as config:
+                config.write("{} {} {}\n".format(self.props, self.mps, self.dval))
+
+                for i in range(self.props):
+                    proposal = seeded_rand.sample(
+                        values, seeded_rand.randint(1, self.mps)
+                    )
+                    config.write(" ".join(map(str, proposal)))
+                    config.write("\n")
+
+        return (hostsfile, configfiles)
+
 
 class StressTest:
     def __init__(self, procs, concurrency, attempts, attemptsRatio):
@@ -117,16 +170,22 @@ class StressTest:
         self.attempts = attempts
         self.attemptsRatio = attemptsRatio
 
-        maxTerminatedProcesses = self.processes // 2 if self.processes % 2 == 1 else (self.processes - 1) // 2
+        maxTerminatedProcesses = (
+            self.processes // 2
+            if self.processes % 2 == 1
+            else (self.processes - 1) // 2
+        )
         self.terminatedProcs = AtomicSaturatedCounter(maxTerminatedProcesses)
 
     def stress(self):
-        selectProc = list(range(1, self.processes+1))
+        selectProc = list(range(1, self.processes + 1))
         random.shuffle(selectProc)
 
-        selectOp = [ProcessState.STOPPED] * int(1000 * self.attemptsRatio['STOP']) + \
-                    [ProcessState.RUNNING] * int(1000 * self.attemptsRatio['CONT']) + \
-                    [ProcessState.TERMINATED] * int(1000 * self.attemptsRatio['TERM'])
+        selectOp = (
+            [ProcessState.STOPPED] * int(1000 * self.attemptsRatio["STOP"])
+            + [ProcessState.RUNNING] * int(1000 * self.attemptsRatio["CONT"])
+            + [ProcessState.TERMINATED] * int(1000 * self.attemptsRatio["TERM"])
+        )
         random.shuffle(selectOp)
 
         successfulAttempts = 0
@@ -149,7 +208,11 @@ class StressTest:
                     info.handle.send_signal(ProcessInfo.stateToSignal(op))
                     info.state = op
                     successfulAttempts += 1
-                    print("Sending {} to process {}".format(ProcessInfo.stateToSignalStr(op), proc))
+                    print(
+                        "Sending {} to process {}".format(
+                            ProcessInfo.stateToSignalStr(op), proc
+                        )
+                    )
 
                     # if op == ProcessState.TERMINATED and proc not in terminatedProcs:
                     #     if len(terminatedProcs) < maxTerminatedProcesses:
@@ -173,9 +236,13 @@ class StressTest:
             with info.lock:
                 if info.state != ProcessState.TERMINATED:
                     if info.state == ProcessState.STOPPED:
-                        info.handle.send_signal(ProcessInfo.stateToSignal(ProcessState.RUNNING))
+                        info.handle.send_signal(
+                            ProcessInfo.stateToSignal(ProcessState.RUNNING)
+                        )
 
-                    info.handle.send_signal(ProcessInfo.stateToSignal(ProcessState.TERMINATED))
+                    info.handle.send_signal(
+                        ProcessInfo.stateToSignal(ProcessState.TERMINATED)
+                    )
 
         return False
 
@@ -184,22 +251,27 @@ class StressTest:
             with info.lock:
                 if info.state != ProcessState.TERMINATED:
                     if info.state == ProcessState.STOPPED:
-                        info.handle.send_signal(ProcessInfo.stateToSignal(ProcessState.RUNNING))
+                        info.handle.send_signal(
+                            ProcessInfo.stateToSignal(ProcessState.RUNNING)
+                        )
 
     def run(self):
         if self.concurrency > 1:
-            threads = [threading.Thread(target=self.stress) for _ in range(self.concurrency)]
+            threads = [
+                threading.Thread(target=self.stress) for _ in range(self.concurrency)
+            ]
             [p.start() for p in threads]
             [p.join() for p in threads]
         else:
             self.stress()
 
-def startProcesses(processes, runscript, hostsFilePath, configFilePath, outputDir):
+
+def startProcesses(processes, runscript, hostsFilePath, configFilePaths, outputDir):
     runscriptPath = os.path.abspath(runscript)
     if not os.path.isfile(runscriptPath):
         raise Exception("`{}` is not a file".format(runscriptPath))
 
-    if os.path.basename(runscriptPath) != 'run.sh':
+    if os.path.basename(runscriptPath) != "run.sh":
         raise Exception("`{}` is not a runscript".format(runscriptPath))
 
     outputDirPath = os.path.abspath(outputDir)
@@ -213,50 +285,93 @@ def startProcesses(processes, runscript, hostsFilePath, configFilePath, outputDi
     if os.path.exists(bin_cpp):
         cmd = [bin_cpp]
     elif os.path.exists(bin_java):
-        cmd = ['java', '-jar', bin_java]
+        cmd = ["java", "-jar", bin_java]
     else:
-        raise Exception("`{}` could not find a binary to execute. Make sure you build before validating".format(runscriptPath))
+        raise Exception(
+            "`{}` could not find a binary to execute. Make sure you build before validating".format(
+                runscriptPath
+            )
+        )
 
     procs = []
-    for pid in range(1, processes+1):
-        cmd_ext = ['--id', str(pid),
-                   '--hosts', hostsFilePath,
-                   '--output', os.path.join(outputDirPath, 'proc{:02d}.output'.format(pid)),
-                   configFilePath]
+    for pid, config_path in zip(
+        range(1, processes + 1), itertools.cycle(configFilePaths)
+    ):
+        cmd_ext = [
+            "--id",
+            str(pid),
+            "--hosts",
+            hostsFilePath,
+            "--output",
+            os.path.join(outputDirPath, "proc{:02d}.output".format(pid)),
+            config_path,
+        ]
 
-        stdoutFd = open(os.path.join(outputDirPath, 'proc{:02d}.stdout'.format(pid)), "w")
-        stderrFd = open(os.path.join(outputDirPath, 'proc{:02d}.stderr'.format(pid)), "w")
+        stdoutFd = open(
+            os.path.join(outputDirPath, "proc{:02d}.stdout".format(pid)), "w"
+        )
+        stderrFd = open(
+            os.path.join(outputDirPath, "proc{:02d}.stderr".format(pid)), "w"
+        )
 
-
-        procs.append((pid, subprocess.Popen(cmd + cmd_ext, stdout=stdoutFd, stderr=stderrFd)))
+        procs.append(
+            (pid, subprocess.Popen(cmd + cmd_ext, stdout=stdoutFd, stderr=stderrFd))
+        )
 
     return procs
 
-def main(processes, messages, runscript, testType, logsDir, testConfig):
+
+def main(parser_results, testConfig):
+    cmd = parser_results.command
+    runscript = parser_results.runscript
+    logsDir = parser_results.logsDir
+    processes = parser_results.processes
+
     if not os.path.isdir(logsDir):
-        raise ValueError('Directory `{}` does not exist'.format(logsDir))
+        raise ValueError("Directory `{}` does not exist".format(logsDir))
 
-
-    validation = Validation(processes, messages)
-    if testType == "perfect":
+    if cmd == "perfect":
+        validation = Validation(processes, parser_results.messages)
         hostsFile, configFile = validation.generatePerfectLinksConfig(logsDir)
-    elif testType == "fifo":
+        configFiles = [configFile]
+    elif cmd == "fifo":
+        validation = Validation(processes, parser_results.messages)
         hostsFile, configFile = validation.generateFifoConfig(logsDir)
+        configFiles = [configFile]
+    elif cmd == "agreement":
+        proposals = parser_results.proposals
+        pmv = parser_results.proposal_max_values
+        pdv = parser_results.proposals_distinct_values
+
+        if pmv > pdv:
+            print(
+                "The distinct proposal values must at least as many as the maximum values per proposal"
+            )
+            sys.exit(1)
+
+        validation = LatticeAgreementValidation(processes, proposals, pmv, pdv)
+        hostsFile, configFiles = validation.generate(logsDir)
     else:
-        raise ValueError('Unrecognised test type')
+        raise ValueError("Unrecognized command")
 
     try:
         # Start the processes and get their PIDs
-        procs = startProcesses(processes, runscript, hostsFile, configFile, logsDir)
+        procs = startProcesses(processes, runscript, hostsFile, configFiles, logsDir)
 
         # Create the stress test
-        st = StressTest(procs,
-                        testConfig['concurrency'],
-                        testConfig['attempts'],
-                        testConfig['attemptsDistribution'])
+        st = StressTest(
+            procs,
+            testConfig["concurrency"],
+            testConfig["attempts"],
+            testConfig["attemptsDistribution"],
+        )
 
         for (logicalPID, procHandle) in procs:
-            print("Process with logicalPID {} has PID {}".format(logicalPID, procHandle.pid))
+            print(
+                "Process with logicalPID {} has PID {}".format(
+                    logicalPID, procHandle.pid
+                )
+            )
 
         st.run()
         print("StressTest is complete.")
@@ -276,10 +391,19 @@ def main(processes, messages, runscript, testType, logsDir, testConfig):
             procHandle.wait()
 
             with mutex:
-                print("Process {} exited with {}".format(logicalPID, procHandle.returncode))
+                print(
+                    "Process {} exited with {}".format(
+                        logicalPID, procHandle.returncode
+                    )
+                )
 
         # Monitor which processes have exited
-        monitors = [threading.Thread(target=waitForProcess, args=(logicalPID, procHandle, mutex)) for (logicalPID, procHandle) in procs]
+        monitors = [
+            threading.Thread(
+                target=waitForProcess, args=(logicalPID, procHandle, mutex)
+            )
+            for (logicalPID, procHandle) in procs
+        ]
         [p.start() for p in monitors]
         [p.join() for p in monitors]
 
@@ -288,62 +412,91 @@ def main(processes, messages, runscript, testType, logsDir, testConfig):
             for _, p in procs:
                 p.kill()
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "-r",
-        "--runscript",
-        required=True,
-        dest="runscript",
-        help="Path to run.sh",
+    sub_parsers = parser.add_subparsers(dest="command", help="stress a given milestone")
+    sub_parsers.required = True
+    parser_perfect = sub_parsers.add_parser("perfect", help="stress perfect links")
+    parser_fifo = sub_parsers.add_parser("fifo", help="stress fifo broadcast")
+    parser_agreement = sub_parsers.add_parser(
+        "agreement", help="stress lattice agreement"
     )
 
-    parser.add_argument(
-        "-t",
-        "--test",
-        choices=["perfect", "fifo"],
+    for subparser in [parser_perfect, parser_fifo, parser_agreement]:
+        subparser.add_argument(
+            "-r",
+            "--runscript",
+            required=True,
+            dest="runscript",
+            help="Path to run.sh",
+        )
+
+        subparser.add_argument(
+            "-l",
+            "--logs",
+            required=True,
+            dest="logsDir",
+            help="Directory to store stdout, stderr and outputs generated by the processes",
+        )
+
+        subparser.add_argument(
+            "-p",
+            "--processes",
+            required=True,
+            type=positive_int,
+            dest="processes",
+            help="Number of processes that broadcast",
+        )
+
+    for subparser in [parser_perfect, parser_fifo]:
+        subparser.add_argument(
+            "-m",
+            "--messages",
+            required=True,
+            type=positive_int,
+            dest="messages",
+            help="Maximum number (because it can crash) of messages that each process can broadcast",
+        )
+
+    parser_agreement.add_argument(
+        "-n",
+        "--proposals",
         required=True,
-        dest="testType",
-        help="Which test to run",
+        type=positive_int,
+        dest="proposals",
+        help="Maximum number (because it can crash) of proposal that each process can make",
     )
 
-    parser.add_argument(
-        "-l",
-        "--logs",
+    parser_agreement.add_argument(
+        "-v",
+        "--proposal-values",
         required=True,
-        dest="logsDir",
-        help="Directory to store stdout, stderr and outputs generated by the processes",
+        type=positive_int,
+        dest="proposal_max_values",
+        help="Maximum size of the proposal set that each process proposes",
     )
 
-    parser.add_argument(
-        "-p",
-        "--processes",
+    parser_agreement.add_argument(
+        "-d",
+        "--distinct-values",
         required=True,
-        type=int,
-        dest="processes",
-        help="Number of processes that broadcast",
-    )
-
-    parser.add_argument(
-        "-m",
-        "--messages",
-        required=True,
-        type=int,
-        dest="messages",
-        help="Maximum number (because it can crash) of messages that each process can broadcast",
+        type=positive_int,
+        dest="proposals_distinct_values",
+        help="The number of distinct values among all proposals",
     )
 
     results = parser.parse_args()
 
     testConfig = {
-        'concurrency' : 8, # How many threads are interferring with the running processes
-        'attempts' : 8, # How many interferring attempts each threads does
-        'attemptsDistribution' : { # Probability with which an interferring thread will
-            'STOP': 0.48,          # select an interferring action (make sure they add up to 1)
-            'CONT': 0.48,
-            'TERM':0.04
-        }
+        "concurrency": 8,  # How many threads are interferring with the running processes
+        "attempts": 8,  # How many interferring attempts each threads does
+        "attemptsDistribution": {  # Probability with which an interferring thread will
+            "STOP": 0.48,  # select an interferring action (make sure they add up to 1)
+            "CONT": 0.48,
+            "TERM": 0.04,
+        },
     }
 
-    main(results.processes, results.messages, results.runscript, results.testType, results.logsDir, testConfig)
+    main(results, testConfig)
