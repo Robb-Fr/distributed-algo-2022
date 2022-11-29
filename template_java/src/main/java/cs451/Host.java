@@ -1,19 +1,22 @@
 package cs451;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 
 public class Host {
 
     private static final String IP_START_REGEX = "/";
 
-    private int id;
+    private short id;
     private String ip;
     private int port = -1;
 
+    private InetSocketAddress hostsSocket;
+
     public boolean populate(String idString, String ipString, String portString) {
         try {
-            id = Integer.parseInt(idString);
+            id = Short.parseShort(idString);
 
             String ipTest = InetAddress.getByName(ipString).toString();
             if (ipTest.startsWith(IP_START_REGEX)) {
@@ -38,10 +41,12 @@ public class Host {
             e.printStackTrace();
         }
 
+        this.hostsSocket = new InetSocketAddress(getInetAddress(), getPort());
+
         return true;
     }
 
-    public int getId() {
+    public short getId() {
         return id;
     }
 
@@ -49,7 +54,7 @@ public class Host {
         return ip;
     }
 
-    public InetAddress getInetAddress() {
+    private InetAddress getInetAddress() {
         try {
             InetAddress addr = InetAddress.getByName(this.ip);
             return addr;
@@ -59,6 +64,10 @@ public class Host {
             System.err.println("Unexpectedly unable to parse the IP address");
         }
         return null;
+    }
+
+    public InetSocketAddress getHostsSocket() {
+        return hostsSocket;
     }
 
     public int getPort() {

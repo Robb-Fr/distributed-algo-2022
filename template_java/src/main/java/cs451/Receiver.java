@@ -1,61 +1,71 @@
 package cs451;
 
-import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import cs451.ConfigParser.PerfectLinkConfig;
+import cs451.Broadcasts.Deliverable;
+import cs451.Broadcasts.FifoUniformReliableBroadcast;
+import cs451.Messages.LogsBuilder;
+import cs451.Messages.Message;
+import cs451.Parsers.ConfigParser;
+import cs451.Parsers.ConfigParser.FifoConfig;
+import cs451.States.PlState;
+import cs451.States.UrbSate;
 
 public class Receiver implements Deliverable, Runnable {
-    private final AtomicReference<StringBuilder> logBuilder;
-    private final int myId;
+    private final LogsBuilder logsBuilder;
     private final ConfigParser configParser;
-    private final PerfectLink link;
+    private final FifoUniformReliableBroadcast fifo;
+    private final ConcurrentLinkedQueue<Message> toDeliver = new ConcurrentLinkedQueue<>();
 
-    public Receiver(AtomicReference<StringBuilder> logBuilder, int myId, Map<Integer, Host> hostsMap,
-            ConfigParser configParser,
-            AtomicReference<DatagramSocket> socket)
+    public Receiver(String output, LogsBuilder logsBuilder, short myId, Map<Short, Host> hostsMap,
+            ConfigParser configParser, PlState plState, UrbSate urbState,
+            ConcurrentHashMap<Short, AtomicInteger> fifoNext)
             throws UnknownHostException, SocketException {
-        this.logBuilder = logBuilder;
-        this.myId = myId;
+        this.logsBuilder = logsBuilder;
         this.configParser = configParser;
-        this.link = new PerfectLink(myId, hostsMap, this, socket);
+        this.fifo = new FifoUniformReliableBroadcast(myId, hostsMap, this, plState, urbState, fifoNext);
     }
 
     @Override
     public void deliver(Message m) {
-        if (m != null) {
-            logBuilder.getAndUpdate(s -> s.append("d " + m.getSenderId() + " " + m.getId() + "\n"));
+        if (m == null) {
+            throw new IllegalArgumentException("Cannot deliver a null message");
         }
-
+        toDeliver.add(m);
     }
 
     @Override
     public void run() {
         try {
-            runPerfectLink();
+            runFifoUniformReliableBroadcast();
         } catch (InterruptedException e) {
+            System.err.println("Interrupted receiver");
             e.printStackTrace();
+            fifo.interruptUrb();
+            return;
         }
     }
 
-    private void runPerfectLink() throws InterruptedException {
-        PerfectLinkConfig plConf = configParser.getPerfectLinkConfig();
-        if (plConf == null) {
-            System.err.println("Could not read the perfect link config");
+    private void runFifoUniformReliableBroadcast() throws InterruptedException {
+        FifoConfig fifoConf = configParser.getFifoConfig();
+        if (fifoConf == null) {
+            System.err.println("Could not read the fifo config");
             return;
         }
-        if (plConf.getReceiverId() != myId) {
-            System.out.println("I am not the receiver, no need to receive");
-            return;
-        } else {
-            System.out.println("I am the receiver, here we go receiving");
-            while (true) {
-                link.receiveAndDeliver();
-                Thread.sleep(Constants.SLEEP_BEFORE_RECEIVE);
+        fifo.startUrb();
+        while (true) {
+            Message m = toDeliver.poll();
+            if (m == null) {
+                Thread.sleep(Constants.RECEIVER_SLEEP_BEFORE_NEXT_POLL);
+            } else {
+                logsBuilder.log("d " + m.getSourceId() + " " + m.getId() + "\n");
             }
+            logsBuilder.tryFlush(false);
         }
     }
 

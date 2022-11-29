@@ -1,4 +1,4 @@
-package cs451;
+package cs451.Parsers;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+
+import cs451.Host;
 
 public class HostsParser {
 
@@ -22,9 +24,9 @@ public class HostsParser {
         }
 
         this.filename = filename;
-        try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
             int lineNum = 1;
-            for(String line; (line = br.readLine()) != null; lineNum++) {
+            for (String line; (line = br.readLine()) != null; lineNum++) {
                 if (line.isBlank()) {
                     continue;
                 }
@@ -55,6 +57,10 @@ public class HostsParser {
         // sort by id
         Collections.sort(hosts, new HostsComparator());
         return true;
+    }
+
+    public String getFilename() {
+        return filename;
     }
 
     private boolean checkIdRange() {

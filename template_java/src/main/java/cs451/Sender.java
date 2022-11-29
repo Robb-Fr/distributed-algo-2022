@@ -1,71 +1,73 @@
 package cs451;
 
-import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import cs451.ConfigParser.PerfectLinkConfig;
-import cs451.Message.PayloadType;
+import cs451.Broadcasts.FifoUniformReliableBroadcast;
+import cs451.Messages.LogsBuilder;
+import cs451.Messages.Message;
+import cs451.Messages.Message.PayloadType;
+import cs451.Parsers.ConfigParser;
+import cs451.Parsers.ConfigParser.FifoConfig;
+import cs451.States.PlState;
+import cs451.States.PlStateGiver;
+import cs451.States.UrbSate;
+import cs451.States.UrbStateGiver;
 
-public class Sender implements Runnable {
-    private final AtomicReference<StringBuilder> logBuilder;
-    private final int myId;
-    private final Map<Integer, Host> hostsMap;
+public class Sender implements Runnable, UrbStateGiver, PlStateGiver {
+    private final LogsBuilder logsBuilder;
+    private final short myId;
     private final ConfigParser configParser;
-    private final PerfectLink link;
+    private final FifoUniformReliableBroadcast fifo;
 
-
-    public Sender(AtomicReference<StringBuilder> logBuilder, int myId, Map<Integer, Host> hostsMap,
+    public Sender(LogsBuilder logsBuilder, short myId, Map<Short, Host> hostsMap,
             ConfigParser config)
             throws UnknownHostException, SocketException {
         this.myId = myId;
-        this.logBuilder = logBuilder;
+        this.logsBuilder = logsBuilder;
         this.configParser = config;
-        this.hostsMap = hostsMap;
-        this.link = new PerfectLink(myId, hostsMap);
+        this.fifo = new FifoUniformReliableBroadcast(myId, hostsMap);
     }
 
-    /**
-     * @return : reference to the socket in the link
-     */
-    public AtomicReference<DatagramSocket> getSocket() {
-        return link.getSocket();
+    public ConcurrentHashMap<Short, AtomicInteger> getFifoNext() {
+        return fifo.getFifoNext();
     }
 
     @Override
     public void run() {
         try {
-            runPerfectLink();
+            runFifoUniformReliableBroadcast();
         } catch (InterruptedException e) {
+            System.err.println("Interrupted sender");
             e.printStackTrace();
+            fifo.interruptUrb();
         }
-
     }
 
-    private void runPerfectLink() throws InterruptedException {
-        PerfectLinkConfig plConf = configParser.getPerfectLinkConfig();
-        if (plConf == null) {
-            System.err.println("Could not read the perfect link config");
+    private void runFifoUniformReliableBroadcast() throws InterruptedException {
+        FifoConfig fifoConf = configParser.getFifoConfig();
+        if (fifoConf == null) {
+            System.err.println("Could not read the fifo config");
             return;
         }
-        if (myId == plConf.getReceiverId()) {
-            System.out.println("I am not a sender, no need to send anything");
-            // we are the receiver in this run, we have nothing to send
-            return;
-        } else {
-            System.out.println("I am a sender, here we go sending");
-            // we are a sender
-            int nbMessages = plConf.getNbMessages();
-            Host dest = hostsMap.get(plConf.getReceiverId());
-            for (int i = 1; i <= nbMessages; ++i) {
-                Message m = new Message(i, myId, PayloadType.CONTENT);
-                link.sendPerfect(m, dest);
-                logBuilder.getAndUpdate(s -> s.append("b " + m.getId() + "\n"));
-            }
+        fifo.startUrb();
+        for (int i = 1; i <= fifoConf.getNbMessages(); i++) {
+            Message m = new Message(i, myId, PayloadType.CONTENT);
+            fifo.broadcast(m);
+            logsBuilder.log("b " + m.getId() + "\n");
         }
-        System.out.println("Finished sending messages !");
     }
 
+    @Override
+    public PlState getPlState() {
+        return fifo.getPlState();
+    }
+
+    @Override
+    public UrbSate getUrbState() {
+        return fifo.getUrbState();
+    }
 }

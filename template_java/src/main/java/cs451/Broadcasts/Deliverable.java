@@ -1,4 +1,6 @@
-package cs451;
+package cs451.Broadcasts;
+
+import cs451.Messages.Message;
 
 public interface Deliverable {
     /**

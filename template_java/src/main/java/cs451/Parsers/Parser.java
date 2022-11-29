@@ -1,8 +1,11 @@
-package cs451;
+package cs451.Parsers;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import cs451.Constants;
+import cs451.Host;
 
 public class Parser {
 
@@ -56,7 +59,7 @@ public class Parser {
         System.exit(1);
     }
 
-    public int myId() {
+    public short myId() {
         return idParser.getId();
     }
 
@@ -64,9 +67,9 @@ public class Parser {
         return hostsParser.getHosts();
     }
 
-    public Map<Integer, Host> hostsMap() {
+    public Map<Short, Host> hostsMap() {
         List<Host> hosts = hosts();
-        Map<Integer, Host> hostsMap = new HashMap<>(hosts.size());
+        Map<Short, Host> hostsMap = new HashMap<>(hosts.size());
         for (Host host : hosts) {
             hostsMap.put(host.getId(), host);
         }
@@ -83,6 +86,10 @@ public class Parser {
 
     public ConfigParser configParser() {
         return configParser;
+    }
+
+    public long getPid() {
+        return pid;
     }
 
 }
