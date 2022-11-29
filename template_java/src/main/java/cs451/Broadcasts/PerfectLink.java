@@ -33,7 +33,8 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
     private final ConcurrentLinkedQueue<MessageToBeSent> toRetry;
     private final ActorType type;
     private long previousFlush = System.currentTimeMillis();
-    private final int SLEEP_BEFORE_RESEND;
+    private long TIMEOUT_BEFORE_RETRY;
+    private final int MAX_RETRIES;
 
     /**
      * Constructor for a perfect link belonging to a sender
@@ -51,9 +52,9 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
         this.type = ActorType.SENDER;
         this.toSend = new ConcurrentLinkedQueue<>();
         this.toRetry = new ConcurrentLinkedQueue<>();
-        int sleep_val = Constants.PL_SLEEP_BEFORE_RESEND +
-                (hostsMap.size() / Constants.THRESHOLD_NB_HOST_FOR_BACK_OFF);
-        this.SLEEP_BEFORE_RESEND = sleep_val * sleep_val;
+        int sleep_val = Constants.PL_SLEEP_BEFORE_RESEND + (hostsMap.size() / Constants.THRESHOLD_NB_HOST_FOR_BACK_OFF);
+        this.TIMEOUT_BEFORE_RETRY = sleep_val * sleep_val;
+        this.MAX_RETRIES = Constants.MAX_OUT_OF_ORDER_DELIVERY * hostsMap.size() / 2;
         this.parent = null;
         this.delivered = null;
     }
@@ -75,7 +76,8 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
         this.delivered = new ConcurrentLowMemoryMsgSet<>(hostsMap);
         this.parent = parent;
         this.type = ActorType.RECEIVER;
-        this.SLEEP_BEFORE_RESEND = -1;
+        this.TIMEOUT_BEFORE_RETRY = -1;
+        this.MAX_RETRIES = -1;
         this.toRetry = null;
     }
 
@@ -111,13 +113,19 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable, Flushable
                         if (!m.isAck()) {
                             toRetry.add(mToSend);
                         }
-                        if ((System.currentTimeMillis() - previousFlush) > SLEEP_BEFORE_RESEND) {
-                            while ((mToSend = toRetry.poll()) != null) {
+                        if ((System.currentTimeMillis() - previousFlush) > TIMEOUT_BEFORE_RETRY) {
+                            int retried = 0;
+                            while ((mToSend = toRetry.poll()) != null && retried < MAX_RETRIES) {
                                 if (!plAcked.contains(mToSend.getAckForThisMessage())) {
                                     toSend.add(mToSend);
+                                    retried++;
                                 }
                             }
                             previousFlush = System.currentTimeMillis();
+                            if (3 * retried >= MAX_RETRIES) {
+                                TIMEOUT_BEFORE_RETRY <<= 2;
+                                System.out.println("Changed Timeout to " + TIMEOUT_BEFORE_RETRY);
+                            }
                         }
                     }
                 }
