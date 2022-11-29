@@ -36,7 +36,7 @@ public class Constants {
 
     public static final long TIME_BEFORE_FLUSH = 2000;
 
-    public static final int MAX_OUT_OF_ORDER_DELIVERY = 7;
+    public static final int MAX_OUT_OF_ORDER_DELIVERY = 3;
 
     public static final byte[] EMPTY_MESSAGE = new byte[SERIALIZED_MSG_SIZE];
 }

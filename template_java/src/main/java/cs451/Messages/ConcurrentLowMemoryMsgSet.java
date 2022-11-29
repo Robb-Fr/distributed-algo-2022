@@ -21,17 +21,13 @@ public class ConcurrentLowMemoryMsgSet<M extends Message> {
         }
     }
 
-    public synchronized void flush(short host, int deliveredUntil) {
+    public void flush(short host, int deliveredUntil) {
         int newMax = this.deliveredUntil.get(host).updateAndGet(i -> Integer.max(i, deliveredUntil));
         this.delivered.get(host).removeIf(m -> m.getId() < newMax);
     }
 
-    public synchronized boolean add(M e) {
+    public boolean add(M e) {
         return delivered.get(e.getSourceId()).add(e);
-    }
-
-    public synchronized boolean remove(M e) {
-        return delivered.get(e.getSourceId()).remove(e);
     }
 
     public boolean contains(M e) {

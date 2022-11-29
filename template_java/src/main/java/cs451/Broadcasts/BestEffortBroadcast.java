@@ -2,6 +2,8 @@ package cs451.Broadcasts;
 
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Map;
 
 import cs451.Host;
@@ -51,7 +53,9 @@ public class BestEffortBroadcast implements Deliverable, PlStateGiver, Flushable
         if (type != ActorType.SENDER) {
             throw new IllegalStateException("You need to be a sender to broadcast");
         }
-        for (short host : hostsMap.keySet()) {
+        ArrayList<Short> randomizedHosts = new ArrayList<>(hostsMap.keySet());
+        Collections.shuffle(randomizedHosts);
+        for (short host : randomizedHosts) {
             link.addToSend(m, host);
         }
     }
