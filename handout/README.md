@@ -8,7 +8,7 @@ The goal of this practical project is to implement certain building blocks neces
   - Best-effort Broadcast,
   - Uniform Reliable Broadcast,
   - FIFO Broadcast (submission #2),
-  - (Third submission to be announced)
+  - Lattice Agreement (submission #3)
 
 Various applications (e.g., a payment system) can be built upon these lower-level abstractions. We will check your submissions (see [Submissions](#submissions)) for correctness and performance as part of the final evaluation.
 
@@ -36,13 +36,16 @@ In order to have a fair comparison among implementations, as well as provide sup
 
 Note that we provide you a template for both C/C++ and Java. It is mandatory to use the template in your project. You are **NOT** allowed to change any of the file names or the function signatures in this template.
 
-Allowed 3rd party libraries: **None**. You are not allowed to use any third party libraries in your project. C++17 and Java 11 come with an extensive standard library that can easily satisfy all your needs.
+Allowed 3rd party libraries: **None**. You are not allowed to use any third party libraries in your project. C++17 and Java 11 come with an extensive standard library that can easily satisfy all your needs. However, you allowed to use code from the internet (e.g., a publicly available [skip list](https://en.wikipedia.org/wiki/Skip_list)), as long as you give appropriate credit.
 
 ## Communication Primitive
 Inter-process point-to-point messages (at the low level) must be carried exclusively by UDP packets in their most basic form, not utilizing any additional features (e.g., any form of feedback about packet delivery) provided by the network stack, the operating system or external libraries. Everything must be implemented on top of these low-level point to point messages.
 
 ## Application messages
-The application messages (i.e., those broadcast by processes) are numbered sequentially at each process, starting from `1`. Thus, each process broadcasts messages `1` to `m`. By default, the payload carried by an application message is only the sequence number of that message. Though the payload is known in advance, your implementation should not utilize this information. In other words, your implementation should be agnostic to the contents of the payload. For example, your implementation should work correctly if the payload is arbitrary text instead of sequential numbers. In addition, your implementation should not rely on the fact that the total number of messages (to be broadcast) is known in advance, i.e., your implementation should work correctly if messages arrive as a stream.
+The messages exchanged by processes contain a payload, which differs based on the submission.
+For the first two submission, the payload is an integer number. For the third submission is a list of integer numbers.
+Apart from the payload, the exchanged messages should also contain other metadata information which is necessary to implement the required abstractions.
+We ensure that a messages up to 64KiB can fit in a single UDP packet, thus a sane implementation should not worry about [message fragmentation](https://en.wikipedia.org/wiki/Maximum_transmission_unit).
 
 ## Code structure
 We provide you a template for both C/C++ and Java, which you should use in your project. The template has a certain structure that is explained below:
@@ -97,7 +100,7 @@ Finally, **your executable should not create/use directories named "deploy" and/
 The restrictions for the C/C++ template also apply here. The difference is that you are only allowed to place your source code under `src/main/java/cs451`.
 
 ## Application Interface
-The templates provided come with a command line interface (CLI) that you should use in your deliverables. The implementation for the CLI is given to you for convenience. You are allowed to make any modifications to it, as long as it complies to the specification.
+The templates provided come with a command line interface (CLI) that you should use in your deliverables. The implementation for the CLI is given to you for convenience. You are allowed to make any modifications to it (e.g., add additional argument to help you debug your implementation), as long as it complies to the specification.
 
 The supported arguments are:
 ```sh
@@ -106,7 +109,7 @@ The supported arguments are:
 
 Where:
   - `ID` specifies the unique identifier of the process. In a system of `n` processes, the identifiers are `1`...`n`.
-  - `HOSTS` specifies the path to a file that contains the information about every process in the system, i.e., it describes the system membership. The file contains as many lines as processes in the system. A process identity consists of a numerical process identifier, the IP address or name of the process and the port number on which the process is listening for incoming messages. The entries of each process identity are separated by white space character. The following is an example of the contents of a `HOSTS` file for a system of 5 processes:
+  - `HOSTS` specifies the path to a file that contains the information about every process in the system, i.e., it describes the system membership. The file contains as many lines as processes in the system. A process identity consists of a numerical process identifier, the IP address or name of the process and the port number on which the process is listening for incoming messages. The entries of each process identity are separated by a single space character. The following is an example of the contents of a `HOSTS` file for a system of 5 processes:
   ```
 1 localhost 11001
 2 localhost 11002
@@ -116,41 +119,110 @@ Where:
   ```
   **Note**: The processes should listen for incoming messages in the port range `11000` to `11999` inclusive. Each process should use only 1 port.
 
-  - `OUTPUT` specifies the path to a text file where a process stores its output. The text file contains a log of events.  Each event is represented by one line of the output file, terminated by a Unix-style line break `\n`. There are two types of events to be logged:
-    -  broadcast of application message, using the format `b`*`seq_nr`*,
-  where `seq_nr` is the sequence number of the message.
-    - delivery of application message, using the format `d`*`sender`* *`seq_nr`*, where *`sender`* is the number of the process that broadcast the message and *`seq_nr`* is the sequence number of the message (as numbered by the broadcasting process).
+  - `OUTPUT` specifies the path to a text file where a process stores its output. The formatting of the output text file depends on the submission. 
 
-An example of the content of an output file:
-```
-b 1
-b 2
-b 3
-d 2 1
-d 4 2
-b 4
-```
-
-- `CONFIG` specifies the path to a file that contains additional information for the experimented abstraction (e.g. how many message to broadcast).
+- `CONFIG` specifies the path to a file that contains additional information for the experimented abstraction (e.g., how many message to broadcast).
 
 ## Process Crashes
 We simulate process crashes by relying on Linux's signals.
 A process that receives a `SIGTERM` or `SIGINT` signal must immediately stop its execution with the exception of writing to an output log file (described above). In particular, it must not send or handle any received network packets. You can assume that at most a minority (e.g., 1 out of 3; 2 out of 5; 4 out of 10, ...) processes may crash in one execution.
 You can assume that a process crash will be simulated only by the `SIGINT` or `SIGTERM` signals.
 
-**Note:** The most straight-forward way of logging the output is to append a line to the output file on every broadcast or delivery event. However, this may harm the performance of the implementation. You might consider more sophisticated logging approaches, such as storing all logs in memory and write them to a file only when the `SIGINT` or `SIGTERM` signal is received. Also note that even a crashed process needs to output the sequence of events that occurred before the crash. Remember that writing to files is the only action we allow a process to do after receiving a `SIGINT` or `SIGTERM` signal.
+**Note:** The most straight-forward way of logging the output is to append a line to the output file on every broadcast or delivery event. However, this may harm the performance of the implementation. You may consider more sophisticated logging approaches, such as storing the logs in memory and periodically write them to the output file. Also note that even a crashed process needs to output the sequence of events that occurred before the crash. Remember that writing to files is the only action we allow a process to do after receiving a `SIGINT` or `SIGTERM` signal.
 
-## OUTPUT and CONFIG files
-#### Perfect Links application
-  - The `CONFIG` command-line argument for this algorithm consists of a file that contains two integers `m i` in its first line. `m` defines how many messages each process should send. `i` is the index of the process that should receive the messages.
-  Note that all processes, apart from `i`, send `m` messages each to process `i`.
-  - Even though messages are not being broadcast, processes that send messages log them using the format `b`*`seq_nr`*.
-  - Similarly, process `i` logs the messages using the format `d`*`sender`* *`seq_nr`*.
+## Applications
+### Perfect Links application
+In this application (submission #0) a set of processes exchange messages using perfect links.
+In particular a single process only receives messages while the rest of processes only send messages.
+The communication of every sender with the receiver is realized using the perfect links abstraction.
 
-#### FIFO Broadcast application
-  - You must implement this on top of uniform reliable broadcast (URB).
-  - The `CONFIG` command-line argument for this algorithm consists of a file that contains an integer `m` in its first line. `m` defines how many messages each process should broadcast.
-  - The standard OUTPUT formatting rules described in the [Interface](#application-interface) section apply.
+Below are the details for the `CONFIG` and `CONFIG` files of this submission.
+
+#### The `CONFIG` file
+  - The config file contains two integers `m i` in its first line. The integers are separated by a single space character. `m` defines how many messages each sender process should send. `i` is the index of the receiver process. The receiver process only receives messages while the sender processes only send messages. All `n-1` sender processes, send `m` messages each.
+  Sender processes send messages `1` to `m` in order.
+
+#### The `OUTPUT` file
+The output file contains a log of send/receive events. Each event is represented by one line of the output file, terminated by a Unix-style line break `\n`. There are two types of events to be logged:
+    - sending of an application message, using the format `b`*`seq_nr`*, where `seq_nr` is the sequence number of the message. These messages are numbered sequentially at each process, starting from `1`.
+    - delivery of an application message, using the format `d`*`sender`* *`seq_nr`*, where *`sender`* is the number of the process that sent the message and *`seq_nr`* is the sequence number of the message (as numbered by the sending process).
+
+An example of the content of an output file (ellipsis denotes skipped content)
+```
+b 1
+b 2
+b 3
+...
+```
+
+*Note*: By default, the payload carried by an application message is only the sequence number of that message. Though the payload is known in advance, your implementation should not utilize this information. In other words, your implementation should be agnostic to the contents of the payload. For example, your implementation should work correctly if the payload is arbitrary text instead of sequential numbers. In addition, your implementation should not rely on the fact that the total number of messages (to be broadcast) is known in advance, i.e., your implementation should work correctly if messages arrive as a stream.
+
+### FIFO Broadcast application
+This is the same abstraction as the one thought in class. Informally, Every process is both broadcasting and delivering messages from every other process (including itself). You must implement FIFO broadcast on top of Uniform Reliable Broadcast (URB).
+
+#### The `CONFIG` file
+  - The config file contains an integer `m` in its first line. `m` defines how many messages each process should broadcast. Processes broadcast messages `1` to `m` in order.
+
+#### The `OUTPUT` file
+The output file contains a log of broadcast/deliver events. Each event is represented by one line of the output file, terminated by a Unix-style line break `\n`. There are two types of events to be logged:
+    -  broadcast of and application message, using the format `b`*`seq_nr`*,
+  where `seq_nr` is the sequence number of the message. These messages are numbered sequentially at each process, starting from `1`.
+    - delivery of and application message, using the format `d`*`sender`* *`seq_nr`*, where *`sender`* is the number of the process that broadcast the message and *`seq_nr`* is the sequence number of the message (as numbered by the broadcasting process).
+
+An example of the content of an output file (ellipses denote skipped content in this example)
+```
+b 1
+b 2
+b 3
+...
+d 2 1
+...
+d 4 2
+...
+b 4
+```
+
+### Lattice Agreement
+Lattice Agreement is a strictly weaker than consensus, as it can be solved in the asynchronous model. The formal specification, as well as an algorithm that implements it, is provided in [moodle](https://moodle.epfl.ch/mod/resource/view.php?id=1228278). In a nutshell, processes propose sets of values and also decide set of values.
+However, notice that the provided algorithm is single-shot, i.e., processes propose and decide only once.
+
+The goal of this submission is to implement multi-shot lattice agreement, in which processes decide on a sequence of proposals.
+In other words, in multi-shot lattice agreement, processes run single-shot lattice agreement on a series of slots. The specification of 
+lattice agreement must be satisfied individually in every every slot.
+
+#### The `CONFIG` file
+  - The config file consists of multiple lines.
+  - The first line contains three integers, `p vs ds` (separated by single spaces). `p` denotes the number of proposals for each process, `vs` denotes the maximum number of elements in a proposal, and `ds` denotes the maximum number of distinct elements across all proposals of all processes.
+  - The subsequent `p` lines contain proposals. Each proposal is a set of positive integers, written as a list of integers separated by single spaces. Every line can have up to `vs` integers.
+
+An example of the content of a config file (ellipsis denotes skipped content)
+```
+100 3 5
+478163327
+958682846 478163327 1181241943
+478163327 958682846
+107420369
+958682846
+478163327 107420369 1181241943
+...
+```
+
+*Note*: In the previous submissions, every process received the same config file. In this submission, every process receives a different config file. These config files have identical first lines and differ in the rest of the lines.
+
+#### The `OUTPUT` file
+The text file contains a log of decisions. Each decision is represented by one line of the output file, 
+by a Unix-style line break `\n`. Given that proposals are set of integers, so are decisions. Thus, a decision **should** contain a list of integers separated by single spaces (and terminated by a Unix-style line break `\n`). The order of the lines in the output file must be the same as the order of the lines (proposals) in the config file.
+
+An example of the content of an output file (ellipses denote skipped content in this example)
+```
+478163327 1181241943 1051802512
+478163327 958682846 1181241943
+478163327 958682846 1181241943
+107420369
+107420369 958682846
+478163327 958682846 107420369 1181241943
+...
+```
 
 ## Compilation
 All submitted implementations will be tested using Ubuntu 18.04 running on a 64-bit architecture.
@@ -230,18 +302,42 @@ The following example builds and starts 3 processes (run from within the `templa
 # Type Ctrl-C in every terminal window to create the output files.
 ```
 
-### Automatic execution
-Run
+#### Lattice Agreement
+The following example builds and starts 3 processes (run from within the `template_cpp` or the `template_java` directory):
 ```sh
-./stress.py -r RUNSCRIPT -t {perfect,fifo} -l LOGSDIR -p PROCESSES -c MESSAGES
+# Build the application:
+./build.sh
+
+# In first terminal window:
+./run.sh --id 1 --hosts ../example/hosts --output ../example/output/1.output ../example/configs/lattice-agreement-1.config
+
+# In second terminal window:
+./run.sh --id 2 --hosts ../example/hosts --output ../example/output/2.output ../example/configs/lattice-agreement-2.config
+
+# In third terminal window:
+./run.sh --id 3 --hosts ../example/hosts --output ../example/output/3.output ../example/configs/lattice-agreement-3.config
+
+# Wait enough time for all processes to finish processing messages.
+# Type Ctrl-C in every terminal window to create the output files.
+```
+
+### Automatic execution
+Depending on the submission, use the appropriate command below:
+```sh
+./stress.py perfect -r RUNSCRIPT -l LOGSDIR -p PROCESSES -m MESSAGES
+./stress.py fifo -r RUNSCRIPT -l LOGSDIR -p PROCESSES -m MESSAGES
+./stress.py agreement -r RUNSCRIPT -l LOGSDIR -p PROCESSES -n PROPOSALS -v PROPOSAL_MAX_VALUES -d PROPOSALS_DISTINCT_VALUES
+
 ```
 
 Where:
 * `RUNSCRIPT` is the path to *run.sh*. Remember to build your project first!
-* `-t` specifies which deliverable you run with.
 * `LOGSDIR` is the path to a directory where stdout/stderr and output of each process will be stored.  It also stores generated HOSTS and CONFIG files. The directory must exist as it will not be created for you.
-* `PROCESSES` specifies the number of processes spawn during validation.
-* `MESSAGES` specifies the number of messages each process is broadcasting.
+* `PROCESSES` (for `perfect`, `fifo` and `agreement`) specifies the number of processes spawn during validation.
+* `MESSAGES` (for `perfect` and `fifo`) specifies the number of messages each process is broadcasting.
+* `PROPOSALS` (for `agreement`) specifies the number of proposals each process is proposing.
+* `PROPOSAL_MAX_VALUES` (for `agreement`) specifies the maximum size of the proposal set, i.e., the maximum number of integers that each proposal contains.
+* `PROPOSALS_DISTINCT_VALUES` (for `agreement`) specifies the number of distinct elements across all proposals of all processes, i.e., it specifies the maximum size of the union of all proposals.
 
 You can edit `testConfig` at the bottom of `stress.py` in order to test different scenarios.
 ```py
@@ -274,8 +370,8 @@ We adjust this number accordingly when the network is not well behaving.
 
 Additionally, we enforce certain limitations during testing:
 * You are given 2 CPU cores.
-* You are given 2GiB of memory.
-* You are allowed to spawn up to 1024 threads.
+* You are given a maximum of 64MiB per process.
+* You are allowed to use a maximum of 8 threads per process.
 
 Poorly engineered implementations may fail some tests due to these limitations (e.g., if you create a new thread for every message you broadcast).
 
@@ -301,8 +397,8 @@ Note that these submissions are *incremental*. This means that your work towards
 
 ### Deadlines
 * Perfect Links: October 30th 2022, 23:59
-* Fifo Broadcast: November 20th 2022, 23:59
-* 3rd yet-to-be-announced deliverable: December 18th 2022, 23:59
+* Fifo Broadcast: November 25th 2022, 23:59
+* Lattice Agreement: December 18th 2022, 23:59
 
 ### Submissions
 Submit your deliverable by uploading it to [this](https://cs451-submissions.epfl.ch:8083) website. Use EPFL’s VPN if you cannot access the submission website.
