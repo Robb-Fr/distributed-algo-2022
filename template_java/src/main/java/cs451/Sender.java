@@ -6,68 +6,33 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import cs451.Broadcasts.FifoUniformReliableBroadcast;
 import cs451.Messages.LogsBuilder;
 import cs451.Messages.Message;
 import cs451.Messages.Message.PayloadType;
 import cs451.Parsers.ConfigParser;
-import cs451.Parsers.ConfigParser.FifoConfig;
+import cs451.Parsers.ConfigParser.LatticeConfig;
 import cs451.States.PlState;
 import cs451.States.PlStateGiver;
-import cs451.States.UrbSate;
-import cs451.States.UrbStateGiver;
 
-public class Sender implements Runnable, UrbStateGiver, PlStateGiver {
+public class Sender implements Runnable, PlStateGiver {
     private final LogsBuilder logsBuilder;
     private final short myId;
-    private final ConfigParser configParser;
-    private final FifoUniformReliableBroadcast fifo;
+    private final LatticeConfig latticeConfig;
 
     public Sender(LogsBuilder logsBuilder, short myId, Map<Short, Host> hostsMap,
-            ConfigParser config)
-            throws UnknownHostException, SocketException {
+            ConfigParser config) {
         this.myId = myId;
         this.logsBuilder = logsBuilder;
-        this.configParser = config;
-        this.fifo = new FifoUniformReliableBroadcast(myId, hostsMap);
-    }
-
-    public ConcurrentHashMap<Short, AtomicInteger> getFifoNext() {
-        return fifo.getFifoNext();
+        this.latticeConfig = config.getLatticeConfig();
     }
 
     @Override
     public void run() {
-        try {
-            runFifoUniformReliableBroadcast();
-        } catch (InterruptedException e) {
-            System.err.println("Interrupted sender");
-            e.printStackTrace();
-            fifo.interruptUrb();
-        }
-    }
-
-    private void runFifoUniformReliableBroadcast() throws InterruptedException {
-        FifoConfig fifoConf = configParser.getFifoConfig();
-        if (fifoConf == null) {
-            System.err.println("Could not read the fifo config");
-            return;
-        }
-        fifo.startUrb();
-        for (int i = 1; i <= fifoConf.getNbMessages(); i++) {
-            Message m = new Message(i, myId, PayloadType.CONTENT);
-            fifo.broadcast(m);
-            logsBuilder.log("b " + m.getId() + "\n");
-        }
+        System.err.println("Not implemented !");
     }
 
     @Override
     public PlState getPlState() {
-        return fifo.getPlState();
-    }
-
-    @Override
-    public UrbSate getUrbState() {
-        return fifo.getUrbState();
+        return null;
     }
 }
