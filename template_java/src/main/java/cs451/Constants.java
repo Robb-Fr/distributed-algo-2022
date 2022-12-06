@@ -18,25 +18,15 @@ public class Constants {
     // indexes for config
     public static final int CONFIG_VALUE = 6;
 
-    public static final int SERIALIZED_MSG_SIZE = 9;
+    public static final int MAX_MSG_SIZE = 65_536;
 
-    public static final int PL_SLEEP_BEFORE_RESEND = 8;
+    public static final int PL_TIMEOUT_BEFORE_RESEND = 8;
 
-    public static final int PL_SLEEP_BEFORE_RETRY = 20;
-
-    public static final int FIFO_SLEEP_BEFORE_RESEND = 5;
-
-    public static final int URB_SLEEP_BEFORE_NEXT_POLL = 20;
-
-    public static final int RECEIVER_SLEEP_BEFORE_NEXT_POLL = 10;
-
-    public static final int THRESHOLD_NB_HOST_FOR_BACK_OFF = 8;
+    public static final int SLEEP_BEFORE_NEXT_POLL = 10;
 
     public static final int SOCKET_TIMEOUT = 1;
 
-    public static final long TIME_BEFORE_FLUSH = 2000;
+    public static final long TIME_BEFORE_FLUSH = 2_000;
 
     public static final int MAX_OUT_OF_ORDER_DELIVERY = 3;
-
-    public static final byte[] EMPTY_MESSAGE = new byte[SERIALIZED_MSG_SIZE];
 }

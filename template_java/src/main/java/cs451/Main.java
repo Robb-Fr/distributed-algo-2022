@@ -10,7 +10,6 @@ import cs451.Messages.LogsBuilder;
 import cs451.Parsers.ConfigParser;
 import cs451.Parsers.Parser;
 import cs451.States.PlState;
-import cs451.States.UrbSate;
 
 public class Main {
 
@@ -48,20 +47,22 @@ public class Main {
 
         System.out.println("Creating output file");
         final LogsBuilder logsBuilder = new LogsBuilder(parser.output());
+        final short myId = parser.myId();
         final Map<Short, Host> hostsMap = parser.hostsMap();
         final ConfigParser configParser = parser.configParser();
-        final short myId = parser.myId();
+
+        System.out.println("Config content:");
+        System.out.println("===============");
+        System.out.println(configParser.getLatticeConfig());
 
         try {
             // Creates the sender
             Sender sender = new Sender(logsBuilder, myId, hostsMap, configParser);
             PlState plState = sender.getPlState();
-            UrbSate urbSate = sender.getUrbState();
-            ConcurrentHashMap<Short, AtomicInteger> fifoNext = sender.getFifoNext();
 
             // Creates the receiver
             Receiver receiver = new Receiver(parser.output(), logsBuilder, myId, hostsMap, configParser,
-                    plState, urbSate, fifoNext);
+                    plState);
 
             // Prepares threads to be started
             Thread senderThread = new Thread(sender);
