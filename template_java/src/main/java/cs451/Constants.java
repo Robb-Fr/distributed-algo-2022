@@ -18,7 +18,7 @@ public class Constants {
     // indexes for config
     public static final int CONFIG_VALUE = 6;
 
-    public static final int MAX_MSG_SIZE = 65_536;
+    public static final int MSG_SIZE_NO_VALUES = 14;
 
     public static final int PL_TIMEOUT_BEFORE_RESEND = 8;
 

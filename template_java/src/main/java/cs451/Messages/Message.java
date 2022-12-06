@@ -124,7 +124,8 @@ public class Message {
     }
 
     public byte[] serialize() {
-        ByteBuffer buffer = ByteBuffer.allocate(Constants.MAX_MSG_SIZE);
+        ByteBuffer buffer = ByteBuffer
+                .allocate(Constants.MSG_SIZE_NO_VALUES + Integer.BYTES * (values == null ? 0 : values.size() + 1));
         buffer.put(echoAck.byteValue()).putShort(senderId).putShort(sourceId).putInt(agreementId)
                 .putInt(activePropNumber).put(payloadType.byteValue());
         if (!(echoAck == EchoAck.ACK || payloadType == PayloadType.ACK)) {

@@ -54,7 +54,7 @@ public class PerfectLinkTest {
             FakeParent fakeParent = new FakeParent();
             PerfectLink receiverPl = new PerfectLink(myId, hostsMap, fakeParent, config, state);
             Message m = new Message(EchoAck.ECHO, (short) 1, (short) 1, 3322, 985, PayloadType.PROPOSAL,
-                    Set.of(1, 23, 34, 1223));
+                    Set.of(1223));
 
             // send messages
             senderPl.addToSend(m, myId);
@@ -79,10 +79,10 @@ public class PerfectLinkTest {
             assertEquals(1, fakeParent.delivered.size());
 
             Message m2 = new Message(EchoAck.ECHO, (short) 1, (short) 1, 32432, 5432432, PayloadType.PROPOSAL,
-                    Set.of(784, 5675, 323310, 23482, 3));
+                    Set.of(784, 3));
             Message m3 = new Message(EchoAck.ECHO, (short) 1, (short) 1, 1, 1, PayloadType.ACK, null);
             Message m4 = new Message(EchoAck.ECHO, (short) 1, (short) 1, 9876, 111111, PayloadType.NACK,
-                    Set.of(1, 34, 5453, 22));
+                    Set.of(1, 34, 5453));
             senderPl.addToSend(m2, myId);
             senderPl.addToSend(m3, myId);
             senderPl.addToSend(m4, myId);

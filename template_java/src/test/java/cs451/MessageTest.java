@@ -25,7 +25,7 @@ public class MessageTest {
     @Test
     public void testSerDeClassicMessage() {
         Message m = new Message(EchoAck.ECHO, (short) 89, (short) 22, 918237647, 98765, PayloadType.PROPOSAL,
-                Set.of(1, 23, 34, 1223, 123231, 123671893, 123, 1233557876, 4567));
+                Set.of(1, 23, 34, 1223, 123231, 123671893, 123, 1233557876, 4567, 12213, 124, 55345));
         byte[] serialized = m.serialize();
         Message deserialized = Message.deserialize(serialized);
         messageDeepEquals(m, deserialized);
@@ -34,7 +34,7 @@ public class MessageTest {
     @Test
     public void testSerDeClassicMessage2() {
         Message m = new Message(EchoAck.ECHO, (short) 23, (short) 3, 32432, 5432432, PayloadType.NACK,
-                Set.of(784, 5675, 323310, 23482, 3));
+                Set.of(784, 5675, 323310, 23482, 3, 1, 23, 32423, 234, 46));
         byte[] serialized = m.serialize();
         Message deserialized = Message.deserialize(serialized);
         messageDeepEquals(m, deserialized);

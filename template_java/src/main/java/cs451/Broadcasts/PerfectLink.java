@@ -32,6 +32,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
     private final ConcurrentLinkedQueue<MessageToBeSent> toSend;
     private final ConcurrentLinkedQueue<MessageToBeSent> toRetry;
     private long timeoutBeforeResend = Constants.PL_TIMEOUT_BEFORE_RESEND;
+    private final int vs;
 
     /**
      * Constructor for a perfect link belonging to a sender
@@ -51,6 +52,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         this.type = ActorType.SENDER;
         this.toSend = new ConcurrentLinkedQueue<>();
         this.toRetry = new ConcurrentLinkedQueue<>();
+        this.vs = config.getVs();
         this.parent = null;
         this.delivered = null;
     }
@@ -72,6 +74,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         this.delivered = new ConcurrentLowMemoryMsgSet(hostsMap, config.getP(), config.getVs());
         this.parent = parent;
         this.type = ActorType.RECEIVER;
+        this.vs = config.getVs();
         this.toRetry = null;
     }
 
@@ -180,7 +183,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
 
     private Message receiveMessage() {
         // we should only have sent packets not exceeding this size
-        byte[] buf = new byte[Constants.MAX_MSG_SIZE];
+        byte[] buf = new byte[Constants.MSG_SIZE_NO_VALUES + Integer.BYTES * (vs + 1)];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
         try {
             socket.receive(packet);
