@@ -19,18 +19,19 @@ public class ConcurrentLowMemoryMsgSet {
 
     public boolean add(Message e) {
         boolean wasAdded = messages.putIfAbsent(e.getAgreementId(), new ConcurrentHashMap<>(nbHosts)) == null;
-        wasAdded &= messages.get(e.getAgreementId()).putIfAbsent(e.getSourceId(),
+        wasAdded |= messages.get(e.getAgreementId()).putIfAbsent(e.getSourceId(),
                 ConcurrentHashMap.newKeySet(vs)) == null;
-        wasAdded &= messages.get(e.getAgreementId()).get(e.getSourceId()).add(e.hashCode());
-        if (messages.get(e.getAgreementId()).size() >= nbHosts) {
-            messages.remove(e.getAgreementId());
-        }
+        wasAdded |= messages.get(e.getAgreementId()).get(e.getSourceId()).add(e.hashCode());
         return wasAdded;
     }
 
     public boolean contains(Message e) {
         return messages.containsKey(e.getAgreementId()) && messages.get(e.getAgreementId()).containsKey(e.getSourceId())
-                && messages.get(e.getAgreementId()).get(e.getSourceId()).add(e.hashCode());
+                && messages.get(e.getAgreementId()).get(e.getSourceId()).contains(e.hashCode());
+    }
+
+    public void flush(int agreementId) {
+        messages.remove(agreementId);
     }
 
     @Override

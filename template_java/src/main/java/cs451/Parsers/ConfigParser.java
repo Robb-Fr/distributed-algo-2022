@@ -27,9 +27,9 @@ public class ConfigParser {
         try {
             BufferedReader myReader = new BufferedReader(new FileReader(path));
             List<String[]> data = new ArrayList<>();
-            String[] line = null;
-            while ((line = myReader.readLine().split(" ")) != null) {
-                data.add(line);
+            String line = null;
+            while ((line = myReader.readLine()) != null) {
+                data.add(line.split(" "));
             }
             myReader.close();
             if (data != null && data.get(0) != null && data.get(0).length == 3) {
@@ -44,7 +44,7 @@ public class ConfigParser {
                     if (data.get(i).length <= vs) {
                         int nbProposal = data.get(i).length;
                         Set<Integer> proposal = new HashSet<>(nbProposal);
-                        for (int j = 0; j < nbProposal; ++i) {
+                        for (int j = 0; j < nbProposal; ++j) {
                             proposal.add(Integer.parseInt(data.get(i)[j]));
                         }
                         proposals.add(proposal);
