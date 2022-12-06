@@ -4,6 +4,7 @@ public class MessageToBeSent {
     private final Message message;
     private final byte[] serializedMsg;
     private final short dest;
+    private long timeOfSending;
 
     public MessageToBeSent(Message m, short dest) {
         if (m == null) {
@@ -31,5 +32,18 @@ public class MessageToBeSent {
 
     public short getDest() {
         return dest;
+    }
+
+    public long getTimeOfSending() {
+        return timeOfSending;
+    }
+
+    public void setTimeOfSending(long timeOfSending) {
+        this.timeOfSending = timeOfSending;
+    }
+
+    @Override
+    public String toString() {
+        return "MessageToBeSent [message=" + message + ", dest=" + dest + "]";
     }
 }
