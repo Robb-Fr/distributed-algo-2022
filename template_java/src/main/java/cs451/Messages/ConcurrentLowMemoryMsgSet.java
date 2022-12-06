@@ -30,8 +30,11 @@ public class ConcurrentLowMemoryMsgSet {
                 && messages.get(e.getAgreementId()).get(e.getSourceId()).contains(e.hashCode());
     }
 
-    public void flush(int agreementId) {
-        messages.remove(agreementId);
+    public synchronized void flush(int agreementId) {
+        if (messages.containsKey(agreementId)) {
+            messages.get(agreementId).clear();
+            messages.remove(agreementId);
+        }
     }
 
     @Override
