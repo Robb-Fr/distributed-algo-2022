@@ -3,9 +3,6 @@ package cs451;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import cs451.Messages.LogsBuilder;
 import cs451.Parsers.ConfigParser;
 import cs451.Parsers.Parser;
