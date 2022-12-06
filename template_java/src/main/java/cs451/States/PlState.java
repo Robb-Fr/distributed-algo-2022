@@ -2,37 +2,35 @@ package cs451.States;
 
 import java.net.DatagramSocket;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicReference;
 
 import cs451.Messages.ConcurrentLowMemoryMsgSet;
 import cs451.Messages.MessageToBeSent;
-import cs451.Messages.MessageTupleWithSender;
 
 public class PlState {
-    private final AtomicReference<DatagramSocket> plSocket;
-    private final ConcurrentLowMemoryMsgSet<MessageTupleWithSender> plAcked;
-    private final ConcurrentLinkedQueue<MessageToBeSent> toSend;
+    private final DatagramSocket plSocket;
+    private final ConcurrentLowMemoryMsgSet plAcked;
+    private final ConcurrentLinkedQueue<MessageToBeSent> plToSend;
 
-    public PlState(AtomicReference<DatagramSocket> plSocket,
-            ConcurrentLowMemoryMsgSet<MessageTupleWithSender> plAcked, ConcurrentLinkedQueue<MessageToBeSent> toSend) {
-        if (plSocket == null || plAcked == null || toSend == null) {
+    public PlState(DatagramSocket plSocket,
+            ConcurrentLowMemoryMsgSet plAcked, ConcurrentLinkedQueue<MessageToBeSent> plToSend) {
+        if (plSocket == null || plAcked == null || plToSend == null) {
             throw new IllegalArgumentException("Cannot make plState with null argument");
         }
         this.plSocket = plSocket;
         this.plAcked = plAcked;
-        this.toSend = toSend;
+        this.plToSend = plToSend;
     }
 
-    public AtomicReference<DatagramSocket> getPlSocket() {
+    public DatagramSocket getPlSocket() {
         return plSocket;
     }
 
-    public ConcurrentLowMemoryMsgSet<MessageTupleWithSender> getPlAcked() {
+    public ConcurrentLowMemoryMsgSet getPlAcked() {
         return plAcked;
     }
 
-    public ConcurrentLinkedQueue<MessageToBeSent> getToSend() {
-        return toSend;
+    public ConcurrentLinkedQueue<MessageToBeSent> getPlToSend() {
+        return plToSend;
     }
 
 }
