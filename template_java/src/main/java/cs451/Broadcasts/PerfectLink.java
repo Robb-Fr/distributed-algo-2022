@@ -31,7 +31,6 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
     private final ConcurrentLowMemoryMsgSet acked;
     private final ConcurrentLinkedQueue<MessageToBeSent> toSend;
     private final ConcurrentLinkedQueue<MessageToBeSent> toRetry;
-    private long previousFlush = System.currentTimeMillis();
     private long timeoutBeforeResend = Constants.PL_TIMEOUT_BEFORE_RESEND;
 
     /**
@@ -85,7 +84,9 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
 
     @Override
     public void close() {
-        socket.close();
+        if (socket != null && !socket.isClosed()) {
+            socket.close();
+        }
     }
 
     @Override
@@ -93,43 +94,17 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         try {
             if (type == ActorType.SENDER) {
                 while (true) {
-                    MessageToBeSent mToSend = toSend.poll();
-                    if (mToSend != null) {
-                        Message m = mToSend.getMessage();
-                        sendMessage(mToSend);
-                        // we add to retry if not an ACK
-                        if (!m.isAck()) {
-                            toRetry.add(mToSend);
-                        }
-                        if ((System.currentTimeMillis() - previousFlush) > timeoutBeforeResend) {
-                            int nbToRetry = (toRetry.size() - 1) / 2;
-                            mToSend = toRetry.poll();
-                            int retried = 0;
-                            for (int i = 0; i < nbToRetry; ++i) {
-                                if (!acked.contains(mToSend.getMessage())) {
-                                    toSend.add(mToSend);
-                                    retried++;
-                                }
-                            }
-                            previousFlush = System.currentTimeMillis();
-                            if (retried > 1) {
-                                timeoutBeforeResend <<= 2;
-                                System.out.println("Changed Timeout to " + timeoutBeforeResend);
-                            }
-                        }
-                    } else {
-                        Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
-                    }
+                    runSenderPl();
                 }
             } else if (type == ActorType.RECEIVER) {
                 while (true) {
-                    receiveAndDeliver();
+                    runReceiverPl();
                 }
             } else {
                 throw new IllegalStateException("Unhandled ActorType");
             }
         } catch (InterruptedException e) {
-            System.err.println("Interrupted sender PL");
+            System.err.println("Interrupted PL");
             e.printStackTrace();
             return;
         }
@@ -138,6 +113,42 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
     @Override
     public PlState getPlState() {
         return new PlState(socket, acked, toSend);
+    }
+
+    public void runSenderPl() throws InterruptedException {
+        MessageToBeSent mToSend = toSend.poll();
+        if (mToSend != null) {
+            Message m = mToSend.getMessage();
+            sendMessage(mToSend);
+            mToSend.setTimeOfSending(System.currentTimeMillis());
+            // we add to retry if not an ACK
+            if (!m.isAck()) {
+                toRetry.add(mToSend);
+            }
+            boolean retried = false;
+            int toRetrySize = toRetry.size();
+            for (int i = 0; i < toRetrySize; ++i) {
+                mToSend = toRetry.poll();
+                if ((System.currentTimeMillis() - mToSend.getTimeOfSending()) > timeoutBeforeResend) {
+                    if (!acked.contains(mToSend.getMessage())) {
+                        toSend.add(mToSend);
+                        retried = true;
+                    }
+                } else {
+                    toRetry.add(mToSend);
+                }
+            }
+            if (retried) {
+                timeoutBeforeResend <<= 1;
+                System.out.println("Changed Timeout to " + timeoutBeforeResend);
+            }
+        } else {
+            Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+        }
+    }
+
+    public void runReceiverPl() {
+        receiveAndDeliver();
     }
 
     private void receiveAndDeliver() {
