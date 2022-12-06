@@ -108,11 +108,11 @@ public class Message {
     }
 
     public boolean isAck() {
-        return payloadType == PayloadType.ACK;
+        return echoAck == EchoAck.ACK;
     }
 
     public boolean isAckForMsg(Message m) {
-        return payloadType == PayloadType.ACK && this.equals(m);
+        return echoAck == EchoAck.ACK && this.equals(m);
     }
 
     public MessageToBeSent toSendTo(short dest) {
