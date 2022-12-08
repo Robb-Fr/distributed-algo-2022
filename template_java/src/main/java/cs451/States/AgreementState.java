@@ -6,65 +6,92 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class AgreementState {
-    private AtomicBoolean active;
-    private AtomicInteger ackCount;
-    private AtomicInteger nackCount;
-    private AtomicInteger activeProposalNumber;
-    private ConcurrentHashMap.KeySetView<Integer, Boolean> proposedValues;
+    private final AtomicBoolean active;
+    private final AtomicInteger ackCount;
+    private final AtomicInteger nackCount;
+    private final AtomicInteger activeProposalNumber;
+    private final ConcurrentHashMap.KeySetView<Integer, Boolean> proposedValues;
+    private final ConcurrentHashMap.KeySetView<Integer, Boolean> acceptedValues;
 
-    public AgreementState(boolean active, int ackCount, int nackCount,
-            int activeProposalNumber, Set<Integer> proposedValues) {
-        this.active = new AtomicBoolean(active);
-        this.ackCount = new AtomicInteger(ackCount);
-        this.nackCount = new AtomicInteger(nackCount);
+    public AgreementState(int activeProposalNumber, Set<Integer> proposedValues) {
+        this.active = new AtomicBoolean(true);
+        this.ackCount = new AtomicInteger(0);
+        this.nackCount = new AtomicInteger(0);
         this.activeProposalNumber = new AtomicInteger(activeProposalNumber);
         this.proposedValues = ConcurrentHashMap.newKeySet(proposedValues.size());
         for (int i : proposedValues) {
             this.proposedValues.add(i);
         }
+        this.acceptedValues = ConcurrentHashMap.newKeySet(proposedValues.size());
+    }
+
+    public synchronized void setProposedValues(Set<Integer> newProposedValues) {
+        this.proposedValues.clear();
+        this.proposedValues.addAll(Set.copyOf(newProposedValues));
+    }
+
+    public synchronized void setAcceptedValues(Set<Integer> newProposedValues) {
+        this.acceptedValues.clear();
+        this.acceptedValues.addAll(Set.copyOf(newProposedValues));
+    }
+
+    public Set<Integer> getProposedValues() {
+        return Set.copyOf(this.proposedValues);
+    }
+
+    public Set<Integer> getAcceptedValues() {
+        return Set.copyOf(this.acceptedValues);
+    }
+
+    public synchronized boolean unionProposedValues(Set<Integer> newProposedValues) {
+        return this.proposedValues.addAll(Set.copyOf(newProposedValues));
+    }
+
+    public synchronized boolean unionAcceptedValues(Set<Integer> newProposedValues) {
+        return this.acceptedValues.addAll(Set.copyOf(newProposedValues));
+    }
+
+    public synchronized boolean acceptedValuesIn(Set<Integer> proposed) {
+        return proposed.containsAll(acceptedValues);
     }
 
     public boolean getActive() {
         return active.get();
     }
 
-    public void setActive(boolean active) {
-        this.active.set(active);
+    public void deactivate() {
+        active.set(false);
     }
 
     public int getAckCount() {
         return ackCount.get();
     }
 
-    public void setAckCount(int ackCount) {
-        this.ackCount.set(ackCount);
+    public synchronized void resetAckCount() {
+        ackCount.set(0);
+    }
+
+    public synchronized void incrementAckCount() {
+        ackCount.incrementAndGet();
     }
 
     public int getNackCount() {
         return nackCount.get();
     }
 
-    public void setNackCount(int nackCount) {
-        this.nackCount.set(nackCount);
+    public synchronized void resetNackCount() {
+        nackCount.set(0);
+    }
+
+    public synchronized void incrementNackCount() {
+        nackCount.incrementAndGet();
     }
 
     public int getActiveProposalNumber() {
         return activeProposalNumber.get();
     }
 
-    public void setActiveProposalNumber(int activeProposalNumber) {
-        this.activeProposalNumber.set(activeProposalNumber);
+    public synchronized void incrementActiveProposalNumber() {
+        activeProposalNumber.incrementAndGet();
     }
-
-    public ConcurrentHashMap.KeySetView<Integer, Boolean> getProposedValues() {
-        return proposedValues;
-    }
-
-    public void setProposedValues(Set<Integer> proposedValues) {
-        this.proposedValues.clear();
-        for (int i : proposedValues) {
-            this.proposedValues.add(i);
-        }
-    }
-
 }
