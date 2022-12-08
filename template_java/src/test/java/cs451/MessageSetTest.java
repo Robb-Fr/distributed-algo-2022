@@ -41,10 +41,5 @@ public class MessageSetTest {
         assertFalse(delivered.contains(m2));
         delivered.add(m2);
         assertTrue(delivered.contains(m2));
-
-        Message ackM = m.ack((short) 123);
-        // we should contain this message as it's the ACK for previous one at PL level.
-        // Considered equivalent.
-        assertTrue(delivered.contains(ackM));
     }
 }

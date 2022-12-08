@@ -144,37 +144,6 @@ public class Message {
                 + payloadType + ", values=" + values + "]";
     }
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + sourceId;
-        result = prime * result + agreementId;
-        result = prime * result + activePropNumber;
-        result = prime * result + ((payloadType == null) ? 0 : payloadType.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        Message other = (Message) obj;
-        if (sourceId != other.sourceId)
-            return false;
-        if (agreementId != other.agreementId)
-            return false;
-        if (activePropNumber != other.activePropNumber)
-            return false;
-        if (payloadType != other.payloadType)
-            return false;
-        return true;
-    }
-
     public EchoAck getEchoAck() {
         return echoAck;
     }
@@ -201,6 +170,40 @@ public class Message {
 
     public Set<Integer> getValues() {
         return values;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + senderId;
+        result = prime * result + sourceId;
+        result = prime * result + agreementId;
+        result = prime * result + activePropNumber;
+        result = prime * result + ((payloadType == null) ? 0 : payloadType.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Message other = (Message) obj;
+        if (senderId != other.senderId)
+            return false;
+        if (sourceId != other.sourceId)
+            return false;
+        if (agreementId != other.agreementId)
+            return false;
+        if (activePropNumber != other.activePropNumber)
+            return false;
+        if (payloadType != other.payloadType)
+            return false;
+        return true;
     }
 
 }
