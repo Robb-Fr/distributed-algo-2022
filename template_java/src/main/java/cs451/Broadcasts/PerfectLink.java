@@ -85,6 +85,11 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         toSend.add(message.toSendTo(dest));
     }
 
+    public void flush(int agreementId) {
+        acked.flush(agreementId);
+        delivered.flush(agreementId);
+    }
+
     @Override
     public void close() {
         if (socket != null && !socket.isClosed()) {
