@@ -48,7 +48,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         InetAddress thisHostIp = InetAddress.getByName(thisHost.getIp());
         this.socket = new DatagramSocket(thisHost.getPort(), thisHostIp);
         this.socket.setSoTimeout(Constants.SOCKET_TIMEOUT);
-        this.acked = new ConcurrentLowMemoryMsgSet(hostsMap, config.getP(), config.getVs());
+        this.acked = new ConcurrentLowMemoryMsgSet(config.getP(), config.getVs());
         this.type = ActorType.SENDER;
         this.toSend = new ConcurrentLinkedQueue<>();
         this.toRetry = new ConcurrentLinkedQueue<>();
@@ -71,7 +71,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         this.socket = state.getPlSocket();
         this.acked = state.getPlAcked();
         this.toSend = state.getPlToSend();
-        this.delivered = new ConcurrentLowMemoryMsgSet(hostsMap, config.getP(), config.getVs());
+        this.delivered = new ConcurrentLowMemoryMsgSet(config.getP(), config.getVs());
         this.parent = parent;
         this.type = ActorType.RECEIVER;
         this.vs = config.getVs();

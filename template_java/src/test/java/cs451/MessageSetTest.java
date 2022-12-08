@@ -30,7 +30,7 @@ public class MessageSetTest {
 
     @Test
     public void testAdd() {
-        ConcurrentLowMemoryMsgSet delivered = new ConcurrentLowMemoryMsgSet(hostsMap, config.getP(), config.getVs());
+        ConcurrentLowMemoryMsgSet delivered = new ConcurrentLowMemoryMsgSet(config.getP(), config.getVs());
         Message m = new Message(EchoAck.ECHO, (short) 23, (short) 3, 32432, 5432432, PayloadType.NACK,
                 Set.of(784, 5675, 323310, 23482, 3));
         delivered.add(m);
