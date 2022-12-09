@@ -60,14 +60,16 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
         this.parent = parent;
     }
 
-    public synchronized boolean propose(int agreementId, Set<Integer> values) {
+    public boolean propose(int agreementId, Set<Integer> values) {
         if (values == null) {
             throw new IllegalArgumentException("Cannot propose null values set");
         }
-        if (windowPosition.get() > Constants.MAX_OUT_OF_ORDER_DELIVERY) {
+        if (!agreements.containsKey(agreementId) && windowPosition.get() > Constants.MAX_OUT_OF_ORDER_DELIVERY) {
+            // we cannot propose a new agreement for now : would increase window too much
             return false;
         } else {
             if (agreements.putIfAbsent(agreementId, new AgreementState(0, Collections.emptySet())) == null) {
+                // we add a new agreement in the pipeline
                 windowPosition.incrementAndGet();
                 toDeliver.add(agreementId);
             }
@@ -97,6 +99,7 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
                 throw new IllegalStateException("Should not receive an ACK for a message not in agreements");
             }
             synchronized (agreements.get(mAgreementId)) {
+                // we increment ack count if the received ack is for the actual proposal number
                 if (agreements.get(mAgreementId).getActiveProposalNumber() == m.getActivePropNumber()) {
                     agreements.get(mAgreementId).incrementAckCount();
                 }
@@ -106,6 +109,9 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
                 throw new IllegalStateException("Should not receive a NACK for a message not in agreements");
             }
             synchronized (agreements.get(mAgreementId)) {
+                // we increment nack count if the received nack is for the actual proposal
+                // number
+                // we update the proposed values set accordingly
                 if (agreements.get(mAgreementId).getActiveProposalNumber() == m.getActivePropNumber()) {
                     agreements.get(mAgreementId).unionProposedValues(m.getValues());
                     agreements.get(mAgreementId).incrementNackCount();
@@ -113,10 +119,12 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
             }
         } else if (m.getPayloadType() == PayloadType.PROPOSAL) {
             if (agreements.putIfAbsent(mAgreementId, new AgreementState(0, Collections.emptySet())) == null) {
+                // we add a new agreement in the pipeline
                 windowPosition.incrementAndGet();
                 toDeliver.add(m.getAgreementId());
             }
             synchronized (agreements.get(mAgreementId)) {
+                // either accepted_values ⊆ proposed_values or not
                 if (agreements.get(mAgreementId).acceptedValuesIn(m.getValues())) {
                     agreements.get(mAgreementId).setAcceptedValues(m.getValues());
                     pl.addToSend(
