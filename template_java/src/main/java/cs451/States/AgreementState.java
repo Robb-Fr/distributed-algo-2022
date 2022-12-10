@@ -67,7 +67,7 @@ public class AgreementState {
         return ackCount.get();
     }
 
-    public synchronized void resetAckCount() {
+    public void resetAckCount() {
         ackCount.set(0);
     }
 
@@ -79,7 +79,7 @@ public class AgreementState {
         return nackCount.get();
     }
 
-    public synchronized void resetNackCount() {
+    public void resetNackCount() {
         nackCount.set(0);
     }
 
