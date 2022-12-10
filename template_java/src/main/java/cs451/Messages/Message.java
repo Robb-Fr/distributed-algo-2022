@@ -1,7 +1,6 @@
 package cs451.Messages;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -103,7 +102,7 @@ public class Message {
             if (values == null) {
                 throw new IllegalArgumentException("Cannot have null values for a proposal");
             }
-            this.values = values;
+            this.values = Set.copyOf(values);
         }
     }
 
@@ -134,7 +133,7 @@ public class Message {
                 buffer.putInt(v);
             }
         }
-        return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
+        return buffer.array();
     }
 
     @Override
