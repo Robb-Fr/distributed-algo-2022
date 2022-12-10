@@ -24,7 +24,12 @@ public class Receiver implements Runnable {
         this.latticeConfig = configParser.getLatticeConfig();
     }
 
-    public void deliver(Set<Integer> values) {
+    public Receiver() {
+        logsBuilder = null;
+        latticeConfig = null;
+    }
+
+    public void deliver(int agreementId, Set<Integer> values) {
         if (values == null) {
             throw new IllegalArgumentException("Cannot deliver a null message");
         }
