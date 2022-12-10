@@ -23,10 +23,7 @@ public class ConcurrentLowMemoryMsgSet {
     }
 
     public synchronized void flush(int agreementId) {
-        if (messages.containsKey(agreementId)) {
-            messages.get(agreementId).clear();
-            messages.remove(agreementId);
-        }
+        messages.remove(agreementId);
     }
 
     @Override
