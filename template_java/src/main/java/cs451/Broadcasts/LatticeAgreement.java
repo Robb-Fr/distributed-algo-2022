@@ -71,14 +71,14 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
             if (agreements.putIfAbsent(agreementId, new AgreementState(0, Collections.emptySet())) == null) {
                 // we add a new agreement in the pipeline
                 windowPosition.incrementAndGet();
-                toDeliver.add(agreementId);
+                // toDeliver.add(agreementId);
             }
-            synchronized (agreements.get(agreementId)) {
+            synchronized (agreements) {
                 AgreementState ag = agreements.get(agreementId);
                 ag.setProposedValues(values);
                 ag.incrementActiveProposalNumber();
                 return toBroadcast.add(new Message(EchoAck.ECHO, myId, myId, agreementId,
-                        agreements.get(agreementId).getActiveProposalNumber(), PayloadType.PROPOSAL, values));
+                        ag.getActiveProposalNumber(), PayloadType.PROPOSAL, values));
             }
         }
     }
@@ -93,22 +93,20 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
         if (m == null) {
             throw new IllegalArgumentException("Cannot deliver a null message");
         }
-        int mAgreementId = m.getAgreementId();
-        if (m.getPayloadType() == PayloadType.ACK) {
-            if (!agreements.containsKey(mAgreementId)) {
-                throw new IllegalStateException("Should not receive an ACK for a message not in agreements");
-            }
-            synchronized (agreements.get(mAgreementId)) {
+        synchronized (agreements) {
+            int mAgreementId = m.getAgreementId();
+            if (m.getPayloadType() == PayloadType.ACK) {
+                if (!agreements.containsKey(mAgreementId)) {
+                    throw new IllegalStateException("Should not receive an ACK for a message not in agreements");
+                }
                 // we increment ack count if the received ack is for the actual proposal number
                 if (agreements.get(mAgreementId).getActiveProposalNumber() == m.getActivePropNumber()) {
                     agreements.get(mAgreementId).incrementAckCount();
                 }
-            }
-        } else if (m.getPayloadType() == PayloadType.NACK) {
-            if (!agreements.containsKey(mAgreementId)) {
-                throw new IllegalStateException("Should not receive a NACK for a message not in agreements");
-            }
-            synchronized (agreements.get(mAgreementId)) {
+            } else if (m.getPayloadType() == PayloadType.NACK) {
+                if (!agreements.containsKey(mAgreementId)) {
+                    throw new IllegalStateException("Should not receive a NACK for a message not in agreements");
+                }
                 // we increment nack count if the received nack is for the actual proposal
                 // number
                 // we update the proposed values set accordingly
@@ -116,14 +114,13 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
                     agreements.get(mAgreementId).unionProposedValues(m.getValues());
                     agreements.get(mAgreementId).incrementNackCount();
                 }
-            }
-        } else if (m.getPayloadType() == PayloadType.PROPOSAL) {
-            if (agreements.putIfAbsent(mAgreementId, new AgreementState(0, Collections.emptySet())) == null) {
-                // we add a new agreement in the pipeline
-                windowPosition.incrementAndGet();
-                toDeliver.add(m.getAgreementId());
-            }
-            synchronized (agreements.get(mAgreementId)) {
+            } else if (m.getPayloadType() == PayloadType.PROPOSAL) {
+                if (agreements.putIfAbsent(mAgreementId,
+                        new AgreementState(m.getActivePropNumber(), Collections.emptySet())) == null) {
+                    // we add a new agreement in the pipeline
+                    windowPosition.incrementAndGet();
+                    // toDeliver.add(mAgreementId);
+                }
                 // either accepted_values ⊆ proposed_values or not
                 if (agreements.get(mAgreementId).acceptedValuesIn(m.getValues())) {
                     agreements.get(mAgreementId).setAcceptedValues(m.getValues());
@@ -140,9 +137,22 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
                                     agreements.get(mAgreementId).getAcceptedValues()),
                             m.getSourceId());
                 }
+            } else {
+                throw new IllegalStateException("Cannot identify message payload type");
             }
-        } else {
-            throw new IllegalStateException("Cannot identify message payload type");
+            AgreementState ag = agreements.get(mAgreementId);
+            if (ag.getNackCount() > 0 && ag.getAckCount() + ag.getNackCount() > hostsMap.size() / 2) {
+                ag.incrementActiveProposalNumber();
+                ag.resetAckCount();
+                ag.resetNackCount();
+                toBroadcast.add(new Message(EchoAck.ECHO, myId, myId, mAgreementId, ag.getActiveProposalNumber(),
+                        PayloadType.PROPOSAL, ag.getProposedValues()));
+            }
+            if (ag.getAckCount() > hostsMap.size() / 2) {
+                parent.deliver(mAgreementId, ag.getProposedValues());
+                ag.deactivate();
+                windowPosition.decrementAndGet();
+            }
         }
     }
 
@@ -153,7 +163,7 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
 
     @Override
     public void run() {
-        Thread plThread = new Thread(pl, "Perfect Link " + type.name());
+        Thread plThread = new Thread(pl, "Host " + myId + " PL " + type.name());
         plThread.start();
         try {
             if (type == ActorType.SENDER) {
@@ -187,40 +197,43 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
     }
 
     private void runReceiverLattice() throws InterruptedException {
-        Integer agId = toDeliver.poll();
-        if (agId == null) {
-            Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
-        } else {
-            synchronized (agreements.get(agId)) {
-                AgreementState ag = agreements.get(agId);
-                if (ag.getActive()) {
-                    boolean toReDeliver = true;
-                    if (ag.getNackCount() > 0 && ag.getAckCount() + ag.getNackCount() >= hostsMap.size() / 2 + 1) {
-                        ag.incrementActiveProposalNumber();
-                        ag.resetAckCount();
-                        ag.resetNackCount();
-                        toBroadcast.add(new Message(EchoAck.ECHO, myId, myId, agId, ag.getActiveProposalNumber(),
-                                PayloadType.PROPOSAL, ag.getProposedValues()));
-                    }
-                    if (ag.getAckCount() >= hostsMap.size() / 2 + 1) {
-                        parent.deliver(ag.getProposedValues());
-                        ag.deactivate();
-                        toReDeliver = false;
-                        windowPosition.decrementAndGet();
-                    }
-                    if (toReDeliver) {
-                        toDeliver.add(agId);
-                    }
-                }
-            }
+        // Integer agId = toDeliver.poll();
+        // if (agId == null) {
+        // Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+        // } else {
+        synchronized (agreements) {
+            // AgreementState ag = agreements.get(agId);
+            // if (ag.getActive()) {
+            // boolean toReDeliver = true;
+            // if (ag.getNackCount() > 0 && ag.getAckCount() + ag.getNackCount() >
+            // hostsMap.size() / 2) {
+            // ag.incrementActiveProposalNumber();
+            // ag.resetAckCount();
+            // ag.resetNackCount();
+            // toBroadcast.add(new Message(EchoAck.ECHO, myId, myId, agId,
+            // ag.getActiveProposalNumber(),
+            // PayloadType.PROPOSAL, ag.getProposedValues()));
+            // }
+            // if (ag.getAckCount() > hostsMap.size() / 2) {
+            // parent.deliver(agId, ag.getProposedValues());
+            // ag.deactivate();
+            // toReDeliver = false;
+            // windowPosition.decrementAndGet();
+            // }
+            // if (toReDeliver) {
+            // toDeliver.add(agId);
+            // }
+            // }
+            // }
+            int N = hostsMap.size();
+            // agreements.entrySet().removeIf((entry) -> {
+            //     if (!entry.getValue().getActive() && entry.getValue().getAckCount() >= N) {
+            //         pl.flush(entry.getKey());
+            //         return true;
+            //     }
+            //     return false;
+            // });
         }
-        int N = hostsMap.size();
-        agreements.entrySet().removeIf((entry) -> {
-            if (entry.getValue().getAckCount() > N) {
-                pl.flush(entry.getKey());
-                return true;
-            }
-            return false;
-        });
+        Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL * 10);
     }
 }
