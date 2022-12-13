@@ -108,7 +108,7 @@ public class LatticeStateTest {
             }
         }
         try {
-            Thread.sleep(1_500);
+            Thread.sleep(1000);
         } catch (InterruptedException e) {
             System.err.println("Test interrupted while sleeping");
             e.printStackTrace();
