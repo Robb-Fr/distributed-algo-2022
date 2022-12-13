@@ -5,8 +5,8 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import cs451.Constants;
@@ -25,10 +25,11 @@ import cs451.States.PlStateGiver;
 public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Deliverable, Runnable {
     private final short myId;
     private final Map<Short, Host> hostsMap;
-    private final ConcurrentHashMap<Integer, AgreementState> agreements;
+    private final ConcurrentSkipListMap<Integer, AgreementState> agreements;
     private final ConcurrentLinkedQueue<Message> toBroadcast;
     private final ConcurrentLinkedQueue<Message> toDeliver;
-    private final AtomicInteger windowPosition;
+    private final AtomicInteger windowSize;
+    private final AtomicInteger windowBottom;
     private final PerfectLink pl;
     private final ActorType type;
     private final Receiver parent;
@@ -37,8 +38,9 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
             throws SocketException, UnknownHostException {
         this.myId = myId;
         this.hostsMap = hostsMap;
-        this.agreements = new ConcurrentHashMap<>(2 * Constants.MAX_OUT_OF_ORDER_DELIVERY);
-        this.windowPosition = new AtomicInteger(0);
+        this.agreements = new ConcurrentSkipListMap<>();
+        this.windowSize = new AtomicInteger(0);
+        this.windowBottom = new AtomicInteger(0);
         this.toBroadcast = new ConcurrentLinkedQueue<>();
         this.pl = new PerfectLink(myId, hostsMap, config);
         this.type = ActorType.SENDER;
@@ -52,7 +54,8 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
         this.myId = myId;
         this.hostsMap = hostsMap;
         this.agreements = latticeState.getAgreements();
-        this.windowPosition = latticeState.getWindowPosition();
+        this.windowSize = latticeState.getWindowSize();
+        this.windowBottom = latticeState.getWindowBottom();
         this.toBroadcast = latticeState.getToBroadcast();
         this.toDeliver = latticeState.getToDeliver();
         this.pl = new PerfectLink(myId, hostsMap, this, config, plState);
@@ -64,14 +67,13 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
         if (values == null) {
             throw new IllegalArgumentException("Cannot propose null values set");
         }
-        if (!agreements.containsKey(agreementId) && windowPosition.get() > Constants.MAX_OUT_OF_ORDER_DELIVERY) {
+        if (!agreements.containsKey(agreementId) && windowSize.get() > Constants.MAX_OUT_OF_ORDER_DELIVERY) {
             // we cannot propose a new agreement for now : would increase window too much
             return false;
         } else {
             if (agreements.putIfAbsent(agreementId, new AgreementState(0, Collections.emptySet())) == null) {
                 // we add a new agreement in the pipeline
-                windowPosition.incrementAndGet();
-                // toDeliver.add(agreementId);
+                windowSize.incrementAndGet();
             }
             synchronized (agreements) {
                 AgreementState ag = agreements.get(agreementId);
@@ -98,7 +100,7 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
 
     @Override
     public LatticeState getLatticeState() {
-        return new LatticeState(agreements, windowPosition, toBroadcast, toDeliver);
+        return new LatticeState(agreements, windowSize, windowBottom, toBroadcast, toDeliver);
     }
 
     @Override
@@ -120,6 +122,7 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
             }
         } catch (InterruptedException e) {
             System.err.println("Interrupted " + type.name() + " LatticeAgreement");
+            plThread.interrupt();
             e.printStackTrace();
         }
 
@@ -141,12 +144,17 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
         if (m == null) {
             Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
         } else {
+            int mAgreementId = m.getAgreementId();
+            if (windowBottom.get() > mAgreementId) {
+                // we moved on from this agreement
+                return;
+            }
             synchronized (agreements) {
-                int mAgreementId = m.getAgreementId();
                 AgreementState ag = agreements.get(mAgreementId);
                 if (m.getPayloadType() == PayloadType.ACK) {
                     if (!agreements.containsKey(mAgreementId)) {
-                        System.err.println("Should not receive an ACK for a message not in agreements");
+                        System.err
+                                .println("Should not receive an ACK for a message not in agreements : " + mAgreementId);
                         return;
                     }
                     // we increment ack count if the received ack is for the actual proposal number
@@ -155,7 +163,8 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
                     }
                 } else if (m.getPayloadType() == PayloadType.NACK) {
                     if (!agreements.containsKey(mAgreementId)) {
-                        System.err.println("Should not receive a NACK for a message not in agreements");
+                        System.err
+                                .println("Should not receive a NACK for a message not in agreements : " + mAgreementId);
                         return;
                     }
                     // we increment nack count if the received nack is for the actual proposal
@@ -165,12 +174,19 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
                         ag.unionProposedValues(m.getValues());
                         ag.incrementNackCount();
                     }
+                } else if (m.getPayloadType() == PayloadType.DECIDED) {
+                    if (agreements.putIfAbsent(mAgreementId,
+                            new AgreementState(m.getActivePropNumber(), Collections.emptySet())) == null) {
+                        // we add a new agreement in the pipeline
+                        windowSize.incrementAndGet();
+                    }
+                    ag = agreements.get(mAgreementId);
+                    ag.incrementDecidedCount();
                 } else if (m.getPayloadType() == PayloadType.PROPOSAL) {
                     if (agreements.putIfAbsent(mAgreementId,
                             new AgreementState(m.getActivePropNumber(), Collections.emptySet())) == null) {
                         // we add a new agreement in the pipeline
-                        windowPosition.incrementAndGet();
-                        // toDeliver.add(mAgreementId);
+                        windowSize.incrementAndGet();
                     }
                     ag = agreements.get(mAgreementId);
                     // either accepted_values ⊆ proposed_values or not
@@ -204,15 +220,18 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
                     if (ag.getAckCount() > hostsMap.size() / 2) {
                         parent.deliver(mAgreementId, ag.getProposedValues());
                         ag.deactivate();
-                        windowPosition.decrementAndGet();
+                        windowSize.decrementAndGet();
+                        toBroadcast.add(new Message(EchoAck.ECHO, myId, myId, mAgreementId,
+                                ag.getActiveProposalNumber(), PayloadType.DECIDED, null));
                     }
                 }
-                // if (!ag.getActive() && ag.getAckCount() >= hostsMap.size()) {
-                // pl.flush(mAgreementId);
-                // agreements.remove(mAgreementId);
-                // }
+                if (agreements.firstKey() == windowBottom.get()
+                        && agreements.firstEntry().getValue().getDecidedCount() >= hostsMap.size()) {
+                    windowBottom.incrementAndGet();
+                    pl.flush(agreements.firstKey());
+                    agreements.remove(agreements.firstKey());
+                }
             }
-
         }
     }
 }

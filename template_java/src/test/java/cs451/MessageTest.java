@@ -41,6 +41,14 @@ public class MessageTest {
     }
 
     @Test
+    public void testSerDeClassicMessage3() {
+        Message m = new Message(EchoAck.ECHO, (short) 12, (short) 43, 1222, 7, PayloadType.DECIDED, null);
+        byte[] serialized = m.serialize();
+        Message deserialized = Message.deserialize(serialized);
+        messageDeepEquals(m, deserialized);
+    }
+
+    @Test
     public void testSerDeEmptyValues() {
         Message m = new Message(EchoAck.ECHO, (short) 12, (short) 432, 1, 1, PayloadType.ACK, null);
         byte[] serialized = m.serialize();

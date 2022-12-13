@@ -9,6 +9,7 @@ public class AgreementState {
     private final AtomicBoolean active;
     private final AtomicInteger ackCount;
     private final AtomicInteger nackCount;
+    private final AtomicInteger decidedCount;
     private final AtomicInteger activeProposalNumber;
     private final ConcurrentHashMap.KeySetView<Integer, Boolean> proposedValues;
     private final ConcurrentHashMap.KeySetView<Integer, Boolean> acceptedValues;
@@ -17,6 +18,7 @@ public class AgreementState {
         this.active = new AtomicBoolean(true);
         this.ackCount = new AtomicInteger(0);
         this.nackCount = new AtomicInteger(0);
+        this.decidedCount = new AtomicInteger(0);
         this.activeProposalNumber = new AtomicInteger(activeProposalNumber);
         this.proposedValues = ConcurrentHashMap.newKeySet(proposedValues.size());
         for (int i : proposedValues) {
@@ -67,24 +69,32 @@ public class AgreementState {
         return ackCount.get();
     }
 
-    public void resetAckCount() {
-        ackCount.set(0);
-    }
-
-    public synchronized void incrementAckCount() {
-        ackCount.incrementAndGet();
-    }
-
     public int getNackCount() {
         return nackCount.get();
+    }
+
+    public void resetAckCount() {
+        ackCount.set(0);
     }
 
     public void resetNackCount() {
         nackCount.set(0);
     }
 
+    public synchronized void incrementAckCount() {
+        ackCount.incrementAndGet();
+    }
+
     public synchronized void incrementNackCount() {
         nackCount.incrementAndGet();
+    }
+
+    public int getDecidedCount() {
+        return decidedCount.get();
+    }
+
+    public synchronized void incrementDecidedCount() {
+        decidedCount.incrementAndGet();
     }
 
     public int getActiveProposalNumber() {

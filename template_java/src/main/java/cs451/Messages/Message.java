@@ -29,7 +29,7 @@ public class Message {
     }
 
     public enum PayloadType {
-        PROPOSAL, ACK, NACK;
+        PROPOSAL, ACK, NACK, DECIDED;
 
         public final static PayloadType[] values = PayloadType.values();
 
@@ -56,7 +56,7 @@ public class Message {
         int agreementId = buffer.getInt();
         int activePropNumber = buffer.getInt();
         PayloadType payloadType = PayloadType.fromByte(buffer.get());
-        if (echoAck == EchoAck.ACK || payloadType == PayloadType.ACK) {
+        if (echoAck == EchoAck.ACK || payloadType == PayloadType.ACK || payloadType == PayloadType.DECIDED) {
             return new Message(echoAck, senderId, sourceId, agreementId, activePropNumber, payloadType, null);
         } else {
             int nbVals = buffer.getInt();
@@ -96,7 +96,7 @@ public class Message {
         this.agreementId = agreementId;
         this.activePropNumber = activePropNumber;
         this.payloadType = pType;
-        if (echoAck == EchoAck.ACK || payloadType == PayloadType.ACK) {
+        if (echoAck == EchoAck.ACK || payloadType == PayloadType.ACK || payloadType == PayloadType.DECIDED) {
             this.values = null;
         } else {
             if (values == null) {
@@ -127,7 +127,7 @@ public class Message {
                 .allocate(Constants.MSG_SIZE_NO_VALUES + Integer.BYTES * (values == null ? 0 : values.size() + 1));
         buffer.put(echoAck.byteValue()).putShort(senderId).putShort(sourceId).putInt(agreementId)
                 .putInt(activePropNumber).put(payloadType.byteValue());
-        if (!(echoAck == EchoAck.ACK || payloadType == PayloadType.ACK)) {
+        if (!(echoAck == EchoAck.ACK || payloadType == PayloadType.ACK || payloadType == PayloadType.DECIDED)) {
             buffer.putInt(values.size());
             for (int v : values) {
                 buffer.putInt(v);
