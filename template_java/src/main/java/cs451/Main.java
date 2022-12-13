@@ -6,6 +6,7 @@ import java.util.Map;
 import cs451.Messages.LogsBuilder;
 import cs451.Parsers.ConfigParser;
 import cs451.Parsers.Parser;
+import cs451.States.LatticeState;
 import cs451.States.PlState;
 
 public class Main {
@@ -54,12 +55,13 @@ public class Main {
 
         try {
             // Creates the sender
-            Sender sender = new Sender(logsBuilder, myId, hostsMap, configParser);
+            Sender sender = new Sender(myId, hostsMap, configParser);
             PlState plState = sender.getPlState();
+            LatticeState latticeState = sender.getLatticeState();
 
             // Creates the receiver
-            Receiver receiver = new Receiver(parser.output(), logsBuilder, myId, hostsMap, configParser,
-                    plState);
+            Receiver receiver = new Receiver(logsBuilder, myId, hostsMap, configParser,
+                    plState, latticeState);
 
             // Prepares threads to be started
             Thread senderThread = new Thread(sender);
