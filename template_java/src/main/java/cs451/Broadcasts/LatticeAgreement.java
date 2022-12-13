@@ -27,7 +27,7 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
     private final Map<Short, Host> hostsMap;
     private final ConcurrentHashMap<Integer, AgreementState> agreements;
     private final ConcurrentLinkedQueue<Message> toBroadcast;
-    private final ConcurrentLinkedQueue<Integer> toDeliver;
+    private final ConcurrentLinkedQueue<Message> toDeliver;
     private final AtomicInteger windowPosition;
     private final PerfectLink pl;
     private final ActorType type;
@@ -93,67 +93,7 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
         if (m == null) {
             throw new IllegalArgumentException("Cannot deliver a null message");
         }
-        synchronized (agreements) {
-            int mAgreementId = m.getAgreementId();
-            if (m.getPayloadType() == PayloadType.ACK) {
-                if (!agreements.containsKey(mAgreementId)) {
-                    throw new IllegalStateException("Should not receive an ACK for a message not in agreements");
-                }
-                // we increment ack count if the received ack is for the actual proposal number
-                if (agreements.get(mAgreementId).getActiveProposalNumber() == m.getActivePropNumber()) {
-                    agreements.get(mAgreementId).incrementAckCount();
-                }
-            } else if (m.getPayloadType() == PayloadType.NACK) {
-                if (!agreements.containsKey(mAgreementId)) {
-                    throw new IllegalStateException("Should not receive a NACK for a message not in agreements");
-                }
-                // we increment nack count if the received nack is for the actual proposal
-                // number
-                // we update the proposed values set accordingly
-                if (agreements.get(mAgreementId).getActiveProposalNumber() == m.getActivePropNumber()) {
-                    agreements.get(mAgreementId).unionProposedValues(m.getValues());
-                    agreements.get(mAgreementId).incrementNackCount();
-                }
-            } else if (m.getPayloadType() == PayloadType.PROPOSAL) {
-                if (agreements.putIfAbsent(mAgreementId,
-                        new AgreementState(m.getActivePropNumber(), Collections.emptySet())) == null) {
-                    // we add a new agreement in the pipeline
-                    windowPosition.incrementAndGet();
-                    // toDeliver.add(mAgreementId);
-                }
-                // either accepted_values ⊆ proposed_values or not
-                if (agreements.get(mAgreementId).acceptedValuesIn(m.getValues())) {
-                    agreements.get(mAgreementId).setAcceptedValues(m.getValues());
-                    pl.addToSend(
-                            new Message(EchoAck.ECHO, myId, myId, mAgreementId, m.getActivePropNumber(),
-                                    PayloadType.ACK,
-                                    null),
-                            m.getSourceId());
-                } else {
-                    agreements.get(mAgreementId).unionAcceptedValues(m.getValues());
-                    pl.addToSend(
-                            new Message(EchoAck.ECHO, myId, myId, mAgreementId, m.getActivePropNumber(),
-                                    PayloadType.NACK,
-                                    agreements.get(mAgreementId).getAcceptedValues()),
-                            m.getSourceId());
-                }
-            } else {
-                throw new IllegalStateException("Cannot identify message payload type");
-            }
-            AgreementState ag = agreements.get(mAgreementId);
-            if (ag.getNackCount() > 0 && ag.getAckCount() + ag.getNackCount() > hostsMap.size() / 2) {
-                ag.incrementActiveProposalNumber();
-                ag.resetAckCount();
-                ag.resetNackCount();
-                toBroadcast.add(new Message(EchoAck.ECHO, myId, myId, mAgreementId, ag.getActiveProposalNumber(),
-                        PayloadType.PROPOSAL, ag.getProposedValues()));
-            }
-            if (ag.getAckCount() > hostsMap.size() / 2) {
-                parent.deliver(mAgreementId, ag.getProposedValues());
-                ag.deactivate();
-                windowPosition.decrementAndGet();
-            }
-        }
+        toDeliver.add(m);
     }
 
     @Override
@@ -197,43 +137,82 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
     }
 
     private void runReceiverLattice() throws InterruptedException {
-        // Integer agId = toDeliver.poll();
-        // if (agId == null) {
-        // Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
-        // } else {
-        synchronized (agreements) {
-            // AgreementState ag = agreements.get(agId);
-            // if (ag.getActive()) {
-            // boolean toReDeliver = true;
-            // if (ag.getNackCount() > 0 && ag.getAckCount() + ag.getNackCount() >
-            // hostsMap.size() / 2) {
-            // ag.incrementActiveProposalNumber();
-            // ag.resetAckCount();
-            // ag.resetNackCount();
-            // toBroadcast.add(new Message(EchoAck.ECHO, myId, myId, agId,
-            // ag.getActiveProposalNumber(),
-            // PayloadType.PROPOSAL, ag.getProposedValues()));
-            // }
-            // if (ag.getAckCount() > hostsMap.size() / 2) {
-            // parent.deliver(agId, ag.getProposedValues());
-            // ag.deactivate();
-            // toReDeliver = false;
-            // windowPosition.decrementAndGet();
-            // }
-            // if (toReDeliver) {
-            // toDeliver.add(agId);
-            // }
-            // }
-            // }
-            int N = hostsMap.size();
-            // agreements.entrySet().removeIf((entry) -> {
-            //     if (!entry.getValue().getActive() && entry.getValue().getAckCount() >= N) {
-            //         pl.flush(entry.getKey());
-            //         return true;
-            //     }
-            //     return false;
-            // });
+        Message m = toDeliver.poll();
+        if (m == null) {
+            Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+        } else {
+            synchronized (agreements) {
+                int mAgreementId = m.getAgreementId();
+                AgreementState ag = agreements.get(mAgreementId);
+                if (m.getPayloadType() == PayloadType.ACK) {
+                    if (!agreements.containsKey(mAgreementId)) {
+                        System.err.println("Should not receive an ACK for a message not in agreements");
+                        return;
+                    }
+                    // we increment ack count if the received ack is for the actual proposal number
+                    if (ag.getActiveProposalNumber() == m.getActivePropNumber()) {
+                        ag.incrementAckCount();
+                    }
+                } else if (m.getPayloadType() == PayloadType.NACK) {
+                    if (!agreements.containsKey(mAgreementId)) {
+                        System.err.println("Should not receive a NACK for a message not in agreements");
+                        return;
+                    }
+                    // we increment nack count if the received nack is for the actual proposal
+                    // number
+                    // we update the proposed values set accordingly
+                    if (ag.getActiveProposalNumber() == m.getActivePropNumber()) {
+                        ag.unionProposedValues(m.getValues());
+                        ag.incrementNackCount();
+                    }
+                } else if (m.getPayloadType() == PayloadType.PROPOSAL) {
+                    if (agreements.putIfAbsent(mAgreementId,
+                            new AgreementState(m.getActivePropNumber(), Collections.emptySet())) == null) {
+                        // we add a new agreement in the pipeline
+                        windowPosition.incrementAndGet();
+                        // toDeliver.add(mAgreementId);
+                    }
+                    ag = agreements.get(mAgreementId);
+                    // either accepted_values ⊆ proposed_values or not
+                    if (ag.acceptedValuesIn(m.getValues())) {
+                        ag.setAcceptedValues(m.getValues());
+                        pl.addToSend(
+                                new Message(EchoAck.ECHO, myId, myId, mAgreementId, m.getActivePropNumber(),
+                                        PayloadType.ACK,
+                                        null),
+                                m.getSourceId());
+                    } else {
+                        ag.unionAcceptedValues(m.getValues());
+                        pl.addToSend(
+                                new Message(EchoAck.ECHO, myId, myId, mAgreementId, m.getActivePropNumber(),
+                                        PayloadType.NACK,
+                                        ag.getAcceptedValues()),
+                                m.getSourceId());
+                    }
+                } else {
+                    throw new IllegalStateException("Cannot identify message payload type");
+                }
+                if (ag.getActive()) {
+                    if (ag.getNackCount() > 0 && ag.getAckCount() + ag.getNackCount() > hostsMap.size() / 2) {
+                        ag.incrementActiveProposalNumber();
+                        ag.resetAckCount();
+                        ag.resetNackCount();
+                        toBroadcast
+                                .add(new Message(EchoAck.ECHO, myId, myId, mAgreementId, ag.getActiveProposalNumber(),
+                                        PayloadType.PROPOSAL, ag.getProposedValues()));
+                    }
+                    if (ag.getAckCount() > hostsMap.size() / 2) {
+                        parent.deliver(mAgreementId, ag.getProposedValues());
+                        ag.deactivate();
+                        windowPosition.decrementAndGet();
+                    }
+                }
+                // if (!ag.getActive() && ag.getAckCount() >= hostsMap.size()) {
+                // pl.flush(mAgreementId);
+                // agreements.remove(mAgreementId);
+                // }
+            }
+
         }
-        Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL * 10);
     }
 }

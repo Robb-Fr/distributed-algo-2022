@@ -10,10 +10,10 @@ public class LatticeState {
     private final ConcurrentHashMap<Integer, AgreementState> agreements;
     private final AtomicInteger windowPosition;
     private final ConcurrentLinkedQueue<Message> toBroadcast;
-    private final ConcurrentLinkedQueue<Integer> toDeliver;
+    private final ConcurrentLinkedQueue<Message> toDeliver;
 
     public LatticeState(ConcurrentHashMap<Integer, AgreementState> agreements, AtomicInteger windowPosition,
-            ConcurrentLinkedQueue<Message> toBroadcast, ConcurrentLinkedQueue<Integer> toDeliver) {
+            ConcurrentLinkedQueue<Message> toBroadcast, ConcurrentLinkedQueue<Message> toDeliver) {
         this.agreements = agreements;
         this.windowPosition = windowPosition;
         this.toBroadcast = toBroadcast;
@@ -32,7 +32,7 @@ public class LatticeState {
         return toBroadcast;
     }
 
-    public ConcurrentLinkedQueue<Integer> getToDeliver() {
+    public ConcurrentLinkedQueue<Message> getToDeliver() {
         return toDeliver;
     }
 
