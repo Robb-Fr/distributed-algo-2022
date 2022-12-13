@@ -8,7 +8,7 @@ files_to_get = [
 ]
 
 
-def get_delivered_set(filename: str):
+def get_delivered_set(filename: str) -> list[set[int]]:
     with open(filename) as file:
         return [{int(e) for e in l.split(" ")} for l in file.readline()]
 
