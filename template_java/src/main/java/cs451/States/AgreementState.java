@@ -104,4 +104,11 @@ public class AgreementState {
     public synchronized void incrementActiveProposalNumber() {
         activeProposalNumber.incrementAndGet();
     }
+
+    @Override
+    public String toString() {
+        return "AgreementState [active=" + active + ", ackCount=" + ackCount + ", nackCount=" + nackCount
+                + ", decidedCount=" + decidedCount + ", activeProposalNumber=" + activeProposalNumber
+                + ", proposedValues=" + proposedValues + ", acceptedValues=" + acceptedValues + "]";
+    }
 }
