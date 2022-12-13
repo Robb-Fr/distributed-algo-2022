@@ -114,8 +114,8 @@ public class Message {
         return echoAck == EchoAck.ACK && this.equals(m);
     }
 
-    public MessageToBeSent toSendTo(short dest) {
-        return new MessageToBeSent(this, dest);
+    public MessageToBeSent toSendTo(short dest, boolean buildFull) {
+        return new MessageToBeSent(this, dest, buildFull);
     }
 
     public Message ack(short ackSenderId) {

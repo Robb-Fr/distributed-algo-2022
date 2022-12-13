@@ -85,7 +85,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         if (message == null) {
             throw new IllegalArgumentException("Cannot send with null arguments");
         }
-        toSend.add(message.toSendTo(dest));
+        toSend.add(message.toSendTo(dest, true));
     }
 
     public void flush(int agreementId) {
@@ -141,7 +141,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
             for (int i = 0; i < toRetrySize; ++i) {
                 mToSend = toRetry.poll();
                 if ((System.currentTimeMillis() - mToSend.getTimeOfSending()) > timeoutBeforeResend) {
-                    if (!acked.contains(mToSend.getMessage())) {
+                    if (!acked.contains(mToSend)) {
                         toSend.add(mToSend);
                         retried = true;
                     }
@@ -167,9 +167,9 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
             throw new IllegalStateException("Sender cannot deliver messages");
         }
         Message m = receiveMessage();
-        if (m != null && !(delivered.contains(m)) && !m.isAck()) {
+        if (m != null && !(delivered.contains(m.toSendTo(myId, false))) && !m.isAck()) {
             parent.deliver(m);
-            delivered.add(m);
+            delivered.add(m.toSendTo(myId, false));
         }
     }
 
@@ -207,7 +207,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         if (m != null) {
             // we check we received an actual message
             if (m.isAck()) {
-                acked.add(m);
+                acked.add(m.toSendTo(myId, false));
             } else {
                 // if the received message is not an ACK itself, we can send an ACK
                 addToSend(m.ack(myId), m.getSenderId());
