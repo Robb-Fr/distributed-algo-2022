@@ -1,5 +1,6 @@
 package cs451.States;
 
+import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -29,28 +30,28 @@ public class AgreementState {
 
     public synchronized void setProposedValues(Set<Integer> newProposedValues) {
         this.proposedValues.clear();
-        this.proposedValues.addAll(Set.copyOf(newProposedValues));
+        this.proposedValues.addAll(newProposedValues);
     }
 
     public synchronized void setAcceptedValues(Set<Integer> newProposedValues) {
         this.acceptedValues.clear();
-        this.acceptedValues.addAll(Set.copyOf(newProposedValues));
+        this.acceptedValues.addAll(newProposedValues);
     }
 
     public Set<Integer> getProposedValues() {
-        return Set.copyOf(this.proposedValues);
+        return Collections.unmodifiableSet(this.proposedValues);
     }
 
     public Set<Integer> getAcceptedValues() {
-        return Set.copyOf(this.acceptedValues);
+        return Collections.unmodifiableSet(this.acceptedValues);
     }
 
     public synchronized boolean unionProposedValues(Set<Integer> newProposedValues) {
-        return this.proposedValues.addAll(Set.copyOf(newProposedValues));
+        return this.proposedValues.addAll(Collections.unmodifiableSet(newProposedValues));
     }
 
     public synchronized boolean unionAcceptedValues(Set<Integer> newProposedValues) {
-        return this.acceptedValues.addAll(Set.copyOf(newProposedValues));
+        return this.acceptedValues.addAll(Collections.unmodifiableSet(newProposedValues));
     }
 
     public synchronized boolean acceptedValuesIn(Set<Integer> proposed) {
