@@ -102,7 +102,7 @@ public class Message {
             if (values == null) {
                 throw new IllegalArgumentException("Cannot have null values for a proposal");
             }
-            this.values = Set.copyOf(values);
+            this.values = values;
         }
     }
 
