@@ -2,6 +2,7 @@ package cs451;
 
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -39,7 +40,7 @@ public class Receiver implements Runnable {
         if (values == null) {
             throw new IllegalArgumentException("Cannot deliver a null message");
         }
-        toDeliver.put(agreementId, Set.copyOf(values));
+        toDeliver.put(agreementId, Collections.unmodifiableSet(values));
     }
 
     @Override
