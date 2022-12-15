@@ -134,7 +134,9 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
             Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
         } else {
             for (short dest : hostsMap.keySet()) {
-                pl.addToSend(mToSend, dest);
+                while (!pl.addToSend(mToSend, dest)) {
+                    Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+                }
             }
         }
     }
@@ -192,18 +194,22 @@ public class LatticeAgreement implements PlStateGiver, LatticeStateGiver, Delive
                     // either accepted_values ⊆ proposed_values or not
                     if (ag.acceptedValuesIn(m.getValues())) {
                         ag.setAcceptedValues(m.getValues());
-                        pl.addToSend(
+                        while (!pl.addToSend(
                                 new Message(EchoAck.ECHO, myId, myId, mAgreementId, m.getActivePropNumber(),
                                         PayloadType.ACK,
                                         null),
-                                m.getSourceId());
+                                m.getSourceId())) {
+                            Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+                        }
                     } else {
                         ag.unionAcceptedValues(m.getValues());
-                        pl.addToSend(
+                        while (!pl.addToSend(
                                 new Message(EchoAck.ECHO, myId, myId, mAgreementId, m.getActivePropNumber(),
                                         PayloadType.NACK,
                                         ag.getAcceptedValues()),
-                                m.getSourceId());
+                                m.getSourceId())) {
+                            Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+                        }
                     }
                 } else {
                     throw new IllegalStateException("Cannot identify message payload type");

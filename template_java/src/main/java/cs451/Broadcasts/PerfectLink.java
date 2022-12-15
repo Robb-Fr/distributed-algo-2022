@@ -81,11 +81,11 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         this.toRetry = null;
     }
 
-    public void addToSend(Message message, short dest) {
+    public boolean addToSend(Message message, short dest) {
         if (message == null) {
             throw new IllegalArgumentException("Cannot send with null arguments");
         }
-        toSend.add(message.toSendTo(dest, true));
+        return toSend.size() > Constants.MAX_PL_QUEUE_SIZE ? false : toSend.add(message.toSendTo(dest, true));
     }
 
     public void flush(int agreementId) {
