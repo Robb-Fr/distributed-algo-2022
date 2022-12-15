@@ -51,9 +51,9 @@ public class LogsBuilder {
                     System.err.println("Failed to write output");
                 }
                 previousFlush.set(System.currentTimeMillis());
+                System.gc();
             }
         }
-        // System.gc();
     }
 
 }
