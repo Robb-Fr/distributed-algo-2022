@@ -7,7 +7,7 @@ import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import cs451.Host;
 import cs451.Messages.ConcurrentLowMemoryMsgSet;
@@ -41,7 +41,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
      */
     public PerfectLink(short myId, Map<Short, Host> hostsMap, LatticeConfig config)
             throws SocketException, UnknownHostException {
-        if (hostsMap == null) {
+        if (hostsMap == null || config == null) {
             throw new IllegalArgumentException("A sender cannot have null self host or hosts map");
         }
         this.myId = myId;
@@ -128,30 +128,29 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
     public void runSenderPl() throws InterruptedException {
         MessageToBeSent mToSend = toSend.poll();
         if (mToSend != null && !acked.contains(mToSend)) {
-            Message m = mToSend.getMessage();
             sendMessage(mToSend);
             mToSend.setTimeOfSending(System.currentTimeMillis());
             // we add to retry if not an ACK
-            if (!m.isAck()) {
+            if (!mToSend.getMessage().isAck()) {
                 toRetry.add(mToSend);
             }
         } else {
             Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
         }
         long now = System.currentTimeMillis();
-        final AtomicBoolean retried = new AtomicBoolean(false);
+        final AtomicInteger retried = new AtomicInteger(0);
         toRetry.removeIf(m -> {
             if (acked.contains(m)) {
                 return true;
             } else if ((now - m.getTimeOfSending()) > timeoutBeforeResend) {
                 toSend.add(m);
-                retried.set(true);
+                retried.incrementAndGet();
                 return true;
             } else {
                 return false;
             }
         });
-        if (retried.get()) {
+        if (retried.get() > hostsMap.size() / 2) {
             timeoutBeforeResend <<= 1;
             System.out.println("Changed Timeout to " + timeoutBeforeResend);
         }
