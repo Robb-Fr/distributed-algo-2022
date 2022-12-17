@@ -34,6 +34,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
     private final ConcurrentLinkedQueue<MessageToBeSent> toSend;
     private final ConcurrentHashMap.KeySetView<MessageToBeSent, Boolean> toRetry;
     private long timeoutBeforeResend = Constants.PL_TIMEOUT_BEFORE_RESEND;
+    private long lastTimeoutUpdate = System.currentTimeMillis();
     private final int ds;
 
     /**
@@ -130,6 +131,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         if (mToSend != null && !acked.contains(mToSend)) {
             sendMessage(mToSend);
             mToSend.setTimeOfSending(System.currentTimeMillis());
+            mToSend.setTimeout(timeoutBeforeResend);
             // we add to retry if not an ACK
             if (!mToSend.getMessage().isAck()) {
                 toRetry.add(mToSend);
@@ -142,7 +144,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         toRetry.removeIf(m -> {
             if (acked.contains(m)) {
                 return true;
-            } else if ((now - m.getTimeOfSending()) > timeoutBeforeResend) {
+            } else if ((now - m.getTimeOfSending()) > m.getTimeout()) {
                 toSend.add(m);
                 retried.incrementAndGet();
                 return true;
@@ -150,8 +152,9 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
                 return false;
             }
         });
-        if (retried.get() > hostsMap.size() / 2) {
+        if (retried.get() > hostsMap.size() / 2 && (now - lastTimeoutUpdate) > timeoutBeforeResend) {
             timeoutBeforeResend <<= 1;
+            lastTimeoutUpdate = now;
             System.out.println("Changed Timeout to " + timeoutBeforeResend);
         }
     }
