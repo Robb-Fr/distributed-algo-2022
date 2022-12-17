@@ -2,9 +2,10 @@ from pathlib import Path
 from sys import argv, stderr
 from os.path import join
 from itertools import combinations
+from typing import List, Set
 
 
-def sets_in_file(filename: str) -> list[set[int]]:
+def sets_in_file(filename: str) -> List[Set[int]]:
     with open(filename, "r") as file:
         return [
             {int(e) for e in line.strip().split(" ") if e != "" and line.strip() != ""}
@@ -19,7 +20,7 @@ def get_filename_for_proc(parent_dir: str, proc_nb: int, extension: str) -> str:
 
 
 def was_stopped_early(
-    decided_values: list[set[int]], expected_len: int, host: int
+    decided_values: List[Set[int]], expected_len: int, host: int
 ) -> bool:
     # we assume that if a process was stopped early, it does not have enough values in decided set
     if not was_printed[host - 1] and len(decided_values) < expected_len:
