@@ -5,7 +5,9 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import cs451.Host;
 import cs451.Messages.ConcurrentLowMemoryMsgSet;
@@ -30,9 +32,8 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
     private final ConcurrentLowMemoryMsgSet delivered;
     private final ConcurrentLowMemoryMsgSet acked;
     private final ConcurrentLinkedQueue<MessageToBeSent> toSend;
-    private final ConcurrentLinkedQueue<MessageToBeSent> toRetry;
+    private final ConcurrentHashMap.KeySetView<MessageToBeSent, Boolean> toRetry;
     private long timeoutBeforeResend = Constants.PL_TIMEOUT_BEFORE_RESEND;
-    private final int vs;
     private final int ds;
 
     /**
@@ -52,8 +53,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         this.acked = new ConcurrentLowMemoryMsgSet(config.getP(), config.getVs());
         this.type = ActorType.SENDER;
         this.toSend = new ConcurrentLinkedQueue<>();
-        this.toRetry = new ConcurrentLinkedQueue<>();
-        this.vs = config.getVs();
+        this.toRetry = ConcurrentHashMap.newKeySet(Constants.MAX_PL_QUEUE_SIZE);
         this.ds = config.getDs();
         this.parent = null;
         this.delivered = null;
@@ -76,7 +76,6 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         this.delivered = new ConcurrentLowMemoryMsgSet(config.getP(), config.getVs());
         this.parent = parent;
         this.type = ActorType.RECEIVER;
-        this.vs = config.getVs();
         this.ds = config.getDs();
         this.toRetry = null;
     }
@@ -128,7 +127,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
 
     public void runSenderPl() throws InterruptedException {
         MessageToBeSent mToSend = toSend.poll();
-        if (mToSend != null) {
+        if (mToSend != null && !acked.contains(mToSend)) {
             Message m = mToSend.getMessage();
             sendMessage(mToSend);
             mToSend.setTimeOfSending(System.currentTimeMillis());
@@ -136,25 +135,25 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
             if (!m.isAck()) {
                 toRetry.add(mToSend);
             }
-            boolean retried = false;
-            int toRetrySize = toRetry.size();
-            for (int i = 0; i < toRetrySize; ++i) {
-                mToSend = toRetry.poll();
-                if ((System.currentTimeMillis() - mToSend.getTimeOfSending()) > timeoutBeforeResend) {
-                    if (!acked.contains(mToSend)) {
-                        toSend.add(mToSend);
-                        retried = true;
-                    }
-                } else {
-                    toRetry.add(mToSend);
-                }
-            }
-            if (retried) {
-                timeoutBeforeResend <<= 1;
-                System.out.println("Changed Timeout to " + timeoutBeforeResend);
-            }
         } else {
             Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+        }
+        long now = System.currentTimeMillis();
+        final AtomicBoolean retried = new AtomicBoolean(false);
+        toRetry.removeIf(m -> {
+            if (acked.contains(m)) {
+                return true;
+            } else if ((now - m.getTimeOfSending()) > timeoutBeforeResend) {
+                toSend.add(m);
+                retried.set(true);
+                return true;
+            } else {
+                return false;
+            }
+        });
+        if (retried.get()) {
+            timeoutBeforeResend <<= 1;
+            System.out.println("Changed Timeout to " + timeoutBeforeResend);
         }
     }
 
@@ -191,7 +190,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
 
     private Message receiveMessage() {
         // we should only have sent packets not exceeding this size
-        byte[] buf = new byte[Constants.MSG_SIZE_NO_VALUES + Integer.BYTES * (vs + ds + 1)];
+        byte[] buf = new byte[Constants.MSG_SIZE_NO_VALUES + Integer.BYTES * (ds + 1)];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
         try {
             socket.receive(packet);
