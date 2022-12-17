@@ -5,6 +5,7 @@ public class MessageToBeSent {
     private final byte[] serializedMsg;
     private final short dest;
     private long timeOfSending;
+    private long timeout;
 
     public MessageToBeSent(Message m, short dest, boolean buildFull) {
         if (m == null) {
@@ -42,8 +43,16 @@ public class MessageToBeSent {
         return timeOfSending;
     }
 
+    public long getTimeout() {
+        return timeout;
+    }
+
     public void setTimeOfSending(long timeOfSending) {
         this.timeOfSending = timeOfSending;
+    }
+
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
     }
 
     @Override
