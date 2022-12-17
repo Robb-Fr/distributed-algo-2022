@@ -20,7 +20,8 @@ public class ConcurrentLowMemoryMsgSet {
         }
         boolean wasAdded = messages.putIfAbsent(e.getMessage().getAgreementId(),
                 ConcurrentHashMap.newKeySet(vs)) == null;
-        wasAdded |= messages.get(e.getMessage().getAgreementId()).add(e.hashCode());
+        ConcurrentHashMap.KeySetView<Integer, Boolean> set = messages.get(e.getMessage().getAgreementId());
+        wasAdded |= set != null && set.add(e.hashCode());
         return wasAdded;
     }
 
