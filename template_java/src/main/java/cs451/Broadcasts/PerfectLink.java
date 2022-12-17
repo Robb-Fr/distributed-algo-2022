@@ -128,7 +128,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
 
     public void runSenderPl() throws InterruptedException {
         MessageToBeSent mToSend = toSend.poll();
-        if (mToSend != null && !acked.contains(mToSend)) {
+        if (mToSend != null) {
             sendMessage(mToSend);
             mToSend.setTimeOfSending(System.currentTimeMillis());
             mToSend.setTimeout(timeoutBeforeResend);
