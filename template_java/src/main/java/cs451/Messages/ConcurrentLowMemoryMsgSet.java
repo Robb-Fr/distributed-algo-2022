@@ -25,9 +25,9 @@ public class ConcurrentLowMemoryMsgSet {
     }
 
     public boolean contains(MessageToBeSent e) {
+        ConcurrentHashMap.KeySetView<Integer, Boolean> set = messages.get(e.getMessage().getAgreementId());
         return e.getMessage().getAgreementId() < flushedUntil.get()
-                || messages.containsKey(e.getMessage().getAgreementId())
-                        && messages.get(e.getMessage().getAgreementId()).contains(e.hashCode());
+                || set != null && set.contains(e.hashCode());
     }
 
     public synchronized void flush(int agreementId) {
