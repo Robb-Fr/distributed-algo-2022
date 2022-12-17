@@ -18,8 +18,13 @@ def get_filename_for_proc(parent_dir: str, proc_nb: int, extension: str) -> str:
     )
 
 
-def was_stopped_early(decided_values: list[set[int]], expected_len: int) -> bool:
+def was_stopped_early(
+    decided_values: list[set[int]], expected_len: int, host: int
+) -> bool:
     # we assume that if a process was stopped early, it does not have enough values in decided set
+    if not was_printed[host - 1] and len(decided_values) < expected_len:
+        print(f"Host {host} was stopped early")
+        was_printed[host - 1] = True
     return len(decided_values) < expected_len
 
 
@@ -46,6 +51,7 @@ config_files = [
 proposals = [sets_in_file(f)[1:] for f in config_files]  # all process' proposals
 decided = [sets_in_file(f) for f in output_files]  # all process'decided values
 failed = False
+was_printed = [False for _ in range(nb_hosts)]
 
 for agreement in range(nb_agreements):
     all_proposals = set()
@@ -54,7 +60,7 @@ for agreement in range(nb_agreements):
         all_proposals = all_proposals.union(prop[agreement])
     for host, (prop, dec) in enumerate(zip(proposals, decided), start=1):
         if not (
-            was_stopped_early(dec, nb_agreements)
+            was_stopped_early(dec, nb_agreements, host)
             or prop[agreement].issubset(dec[agreement])
         ):
             print(
@@ -64,7 +70,7 @@ for agreement in range(nb_agreements):
             failed = True
 
         if not (
-            was_stopped_early(dec, nb_agreements)
+            was_stopped_early(dec, nb_agreements, host)
             or dec[agreement].issubset(all_proposals)
         ):
             print(
@@ -72,15 +78,15 @@ for agreement in range(nb_agreements):
                 stderr,
             )
             failed = True
-    for dec1, dec2 in combinations(decided, 2):
+    for (host1, dec1), (host2, dec2) in combinations(enumerate(decided, start=1), 2):
         if not (
-            was_stopped_early(dec1, nb_agreements)
-            or was_stopped_early(dec2, nb_agreements)
+            was_stopped_early(dec1, nb_agreements, host1)
+            or was_stopped_early(dec2, nb_agreements, host2)
             or dec1[agreement].issubset(dec2[agreement])
             or dec2[agreement].issubset(dec1[agreement])
         ):
             print(
-                f"Failed to verify Consistency for agreement : {agreement} at host : {host}",
+                f"Failed to verify Consistency for agreement : {agreement} at hosts : {host1} and {host2}",
                 stderr,
             )
             failed = True
