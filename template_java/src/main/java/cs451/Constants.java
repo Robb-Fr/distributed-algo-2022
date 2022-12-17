@@ -28,7 +28,7 @@ public class Constants {
 
     public static final long TIME_BEFORE_FLUSH = 2_000;
 
-    public static final int MAX_OUT_OF_ORDER_DELIVERY = 3;
+    public static final int MAX_OUT_OF_ORDER_DELIVERY = 4;
 
-    public static final int MAX_PL_QUEUE_SIZE = 200;
+    public static final int MAX_PL_QUEUE_SIZE = 50;
 }
