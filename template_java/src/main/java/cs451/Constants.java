@@ -22,7 +22,7 @@ public class Constants {
 
     public static final int PL_TIMEOUT_BEFORE_RESEND = 8;
 
-    public static final int SLEEP_BEFORE_NEXT_POLL = 10;
+    public static final int SLEEP_BEFORE_NEXT_POLL = 40;
 
     public static final int SOCKET_TIMEOUT = 1;
 
@@ -30,5 +30,5 @@ public class Constants {
 
     public static final int MAX_OUT_OF_ORDER_DELIVERY = 8;
 
-    public static final int MAX_PL_QUEUE_SIZE = 128;
+    public static final int MAX_PL_QUEUE_SIZE = 1024;
 }
