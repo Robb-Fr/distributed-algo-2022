@@ -32,7 +32,7 @@ public class ConcurrentLowMemoryMsgSet {
     }
 
     public synchronized void flush(int agreementId) {
-        messages.remove(agreementId);
+        messages.entrySet().removeIf(agId -> agId.getKey() < agreementId);
         flushedUntil.compareAndSet(Integer.max(flushedUntil.get(), agreementId), agreementId);
     }
 
