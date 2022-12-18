@@ -130,10 +130,10 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         MessageToBeSent mToSend = toSend.poll();
         if (mToSend != null) {
             sendMessage(mToSend);
-            mToSend.setTimeOfSending(System.currentTimeMillis());
-            mToSend.setTimeout(timeoutBeforeResend);
             // we add to retry if not an ACK
             if (!mToSend.getMessage().isAck()) {
+                mToSend.setTimeOfSending(System.currentTimeMillis());
+                mToSend.setTimeout(timeoutBeforeResend);
                 toRetry.add(mToSend);
             }
         } else {
@@ -141,6 +141,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         }
         long now = System.currentTimeMillis();
         final AtomicInteger retried = new AtomicInteger(0);
+        int toRetrySize = toRetry.size();
         toRetry.removeIf(m -> {
             if (acked.contains(m)) {
                 return true;
@@ -152,7 +153,7 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
                 return false;
             }
         });
-        if (retried.get() > hostsMap.size() / 2 && (now - lastTimeoutUpdate) > timeoutBeforeResend) {
+        if (retried.get() > toRetrySize / 4 && (now - lastTimeoutUpdate) > timeoutBeforeResend) {
             timeoutBeforeResend <<= 1;
             lastTimeoutUpdate = now;
             System.out.println("Changed Timeout to " + timeoutBeforeResend);
@@ -208,10 +209,10 @@ public class PerfectLink implements Closeable, PlStateGiver, Runnable {
         if (m != null) {
             // we check we received an actual message
             if (m.isAck()) {
-                acked.add(m.toSendTo(myId, false));
+                acked.add(m.toSendTo(m.getSenderId(), false));
             } else {
                 // if the received message is not an ACK itself, we can send an ACK
-                addToSend(m.ack(myId), m.getSenderId());
+                toSend.add(m.ack(myId).toSendTo(m.getSenderId(), true));
                 return m;
             }
         }
