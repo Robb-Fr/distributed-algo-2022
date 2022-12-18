@@ -175,7 +175,6 @@ public class Message {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + senderId;
         result = prime * result + sourceId;
         result = prime * result + agreementId;
         result = prime * result + activePropNumber;
@@ -192,8 +191,6 @@ public class Message {
         if (getClass() != obj.getClass())
             return false;
         Message other = (Message) obj;
-        if (senderId != other.senderId)
-            return false;
         if (sourceId != other.sourceId)
             return false;
         if (agreementId != other.agreementId)
