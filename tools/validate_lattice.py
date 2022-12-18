@@ -65,8 +65,7 @@ for agreement in range(nb_agreements):
             or prop[agreement].issubset(dec[agreement])
         ):
             print(
-                f"Failed to verify Validity 1 for agreement : {agreement} at host : {host}",
-                stderr,
+                f"Failed to verify Validity 1 for agreement : {agreement} at host : {host}"
             )
             failed = True
 
@@ -87,8 +86,7 @@ for agreement in range(nb_agreements):
             or dec2[agreement].issubset(dec1[agreement])
         ):
             print(
-                f"Failed to verify Consistency for agreement : {agreement} at hosts : {host1} and {host2}",
-                stderr,
+                f"Failed to verify Consistency for agreement : {agreement} at hosts : {host1} and {host2}"
             )
             failed = True
 
