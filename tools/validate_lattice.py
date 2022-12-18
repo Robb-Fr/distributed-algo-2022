@@ -74,8 +74,7 @@ for agreement in range(nb_agreements):
             or dec[agreement].issubset(all_proposals)
         ):
             print(
-                f"Failed to verify Validity 2 for agreement : {agreement} at host : {host}",
-                stderr,
+                f"Failed to verify Validity 2 for agreement : {agreement} at host : {host}"
             )
             failed = True
     for (host1, dec1), (host2, dec2) in combinations(enumerate(decided, start=1), 2):
