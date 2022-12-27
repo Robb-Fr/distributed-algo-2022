@@ -1,17 +1,24 @@
 package cs451.Messages;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import cs451.Constants;
 
 public class Message {
-    public enum PayloadType {
-        CONTENT,
+    public enum EchoAck {
+        ECHO,
         ACK;
 
-        public final static PayloadType[] values = PayloadType.values();
+        public final static EchoAck[] values = EchoAck.values();
+
+        public static EchoAck fromByte(byte b) {
+            if (b < 0 || b >= values.length) {
+                throw new IllegalStateException("Cannot deserialize content type");
+            }
+            return values[b];
+        }
 
         public byte byteValue() {
             if (this.ordinal() > Byte.MAX_VALUE) {
@@ -19,6 +26,12 @@ public class Message {
             }
             return (byte) this.ordinal();
         }
+    }
+
+    public enum PayloadType {
+        PROPOSAL, ACK, NACK, DECIDED;
+
+        public final static PayloadType[] values = PayloadType.values();
 
         public static PayloadType fromByte(byte b) {
             if (b < 0 || b >= values.length) {
@@ -26,159 +39,146 @@ public class Message {
             }
             return values[b];
         }
+
+        public byte byteValue() {
+            if (this.ordinal() > Byte.MAX_VALUE) {
+                throw new IllegalStateException("Cannot have more than 128 payload types");
+            }
+            return (byte) this.ordinal();
+        }
     }
 
-    /**
-     * Gives the message encoded in the serialized bytes given in input or null the
-     * bytes can't be deserialized.
-     * 
-     * @param bytes : the received bytes on the socket to be deserialized
-     * @return : the received message or null if deserialization failed
-     */
     public static Message deserialize(byte[] bytes) {
-        if (bytes.length != Constants.SERIALIZED_MSG_SIZE) {
-            throw new IllegalArgumentException("Cannot deserialize the received message");
-        }
-        if (Arrays.equals(bytes, Constants.EMPTY_MESSAGE)) {
-            return null;
-        }
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
-        Message m = new Message(buffer.getInt(), buffer.getShort(), buffer.getShort(),
-                PayloadType.fromByte(buffer.get()));
-        return m;
+        EchoAck echoAck = EchoAck.fromByte(buffer.get());
+        short senderId = buffer.getShort();
+        short sourceId = buffer.getShort();
+        int agreementId = buffer.getInt();
+        int activePropNumber = buffer.getInt();
+        PayloadType payloadType = PayloadType.fromByte(buffer.get());
+        if (echoAck == EchoAck.ACK || payloadType == PayloadType.ACK || payloadType == PayloadType.DECIDED) {
+            return new Message(echoAck, senderId, sourceId, agreementId, activePropNumber, payloadType, null);
+        } else {
+            int nbVals = buffer.getInt();
+            HashSet<Integer> proposals = new HashSet<>(nbVals);
+            for (int i = 0; i < nbVals; ++i) {
+                proposals.add(buffer.getInt());
+            }
+            return new Message(echoAck, senderId, sourceId, agreementId, activePropNumber, payloadType, proposals);
+        }
     }
 
-    private final int id;
-
-    private final short sourceId;
+    private final EchoAck echoAck;
 
     private final short senderId;
 
-    private final PayloadType type;
+    private final short sourceId;
 
-    /**
-     * Creates a new message where the source (original sender) will be the same as
-     * the actual sender (not forwarded)
-     * 
-     * @param id     : the message id (basically the index). It is considered
-     *               payload in the CONTENT type packets
-     * @param sender : the sender of the message
-     * @param type   : if the message is an ACK or a CONTENT type message
-     */
-    public Message(int id, short senderId, PayloadType type) {
-        if (type == null) {
+    private final int agreementId;
+
+    private final int activePropNumber;
+
+    private final PayloadType payloadType;
+
+    private final Set<Integer> values;
+
+    public Message(EchoAck cType, short senderId, short sourceId, int agreementId, int activePropNumber,
+            PayloadType pType, Set<Integer> values) {
+        if (cType == null || pType == null) {
             throw new IllegalArgumentException("You cannot create a message with null fields");
         }
         if (senderId == 0) {
-            throw new IllegalArgumentException("There");
+            throw new IllegalArgumentException("Error occurred while deserializing");
         }
-        this.id = id;
-        this.sourceId = senderId;
+        this.echoAck = cType;
         this.senderId = senderId;
-        this.type = type;
-    }
-
-    /**
-     * @param id       : message id
-     * @param sourceId : the id of original host sender
-     * @param senderId : the id of the host actually forwarding this message
-     * @param type     : either ACK or CONTENT type
-     */
-    public Message(int id, short sourceId, short senderId, PayloadType type) {
-        if (type == null) {
-            throw new IllegalArgumentException("You cannot create a message with null fields");
-        }
-        if (sourceId == 0) {
-            throw new IllegalArgumentException("There");
-        }
-        this.id = id;
         this.sourceId = sourceId;
-        this.senderId = senderId;
-        this.type = type;
+        this.agreementId = agreementId;
+        this.activePropNumber = activePropNumber;
+        this.payloadType = pType;
+        if (echoAck == EchoAck.ACK || payloadType == PayloadType.ACK || payloadType == PayloadType.DECIDED) {
+            this.values = null;
+        } else {
+            if (values == null) {
+                throw new IllegalArgumentException("Cannot have null values for a proposal");
+            }
+            this.values = values;
+        }
     }
 
-    /**
-     * Utility for easily creating a message to be forwarded (only changes the
-     * senderId)
-     * 
-     * @param newSenderId : the id of the host that'll forward this message
-     * @return
-     */
-    public Message withUpdatedSender(short newSenderId) {
-        return new Message(id, sourceId, newSenderId, type);
+    public boolean isAck() {
+        return echoAck == EchoAck.ACK;
     }
 
-    public Message withUpdatedId(int newId) {
-        return new Message(newId, sourceId, senderId, type);
+    public boolean isAckForMsg(Message m) {
+        return echoAck == EchoAck.ACK && this.equals(m);
     }
 
-    public Message ackForThisMessage(short idOfSenderOfThisAck) {
-        return new Message(id, sourceId, idOfSenderOfThisAck, PayloadType.ACK);
+    public MessageToBeSent toSendTo(short dest, boolean buildFull) {
+        return new MessageToBeSent(this, dest, buildFull);
     }
 
-    public MessageTupleWithSender tupleWithSender() {
-        return new MessageTupleWithSender(id, sourceId, senderId, type);
+    public Message ack(short ackSenderId) {
+        return new Message(EchoAck.ACK, ackSenderId, sourceId, agreementId, activePropNumber, payloadType, null);
     }
 
-    public MessageToBeSent preparedForSending(short dest) {
-        return new MessageToBeSent(this, dest);
+    public byte[] serialize() {
+        ByteBuffer buffer = ByteBuffer
+                .allocate(Constants.MSG_SIZE_NO_VALUES + Integer.BYTES * (values == null ? 0 : values.size() + 1));
+        buffer.put(echoAck.byteValue()).putShort(senderId).putShort(sourceId).putInt(agreementId)
+                .putInt(activePropNumber).put(payloadType.byteValue());
+        if (!(echoAck == EchoAck.ACK || payloadType == PayloadType.ACK || payloadType == PayloadType.DECIDED)) {
+            buffer.putInt(values.size());
+            for (int v : values) {
+                buffer.putInt(v);
+            }
+        }
+        return buffer.array();
     }
 
-    public MessageTupleWithSender ackForThisMsgTupleWithSender(short idOfSenderOfThisAck) {
-        return new MessageTupleWithSender(id, sourceId, idOfSenderOfThisAck, PayloadType.ACK);
+    @Override
+    public String toString() {
+        return "Message [contentType=" + echoAck + ", senderId=" + senderId + ", sourceId=" + sourceId
+                + ", agreementId=" + agreementId + ", activePropNumber=" + activePropNumber + ", payloadType="
+                + payloadType + ", values=" + values + "]";
     }
 
-    public int getId() {
-        return id;
-    }
-
-    public short getSourceId() {
-        return sourceId;
+    public EchoAck getEchoAck() {
+        return echoAck;
     }
 
     public short getSenderId() {
         return senderId;
     }
 
-    public boolean isAck() {
-        return type == PayloadType.ACK;
+    public short getSourceId() {
+        return sourceId;
     }
 
-    /**
-     * Returns whether this message is an ACK message for the id given in argument
-     * 
-     * @param id : the id of the message we want to check ACK for
-     * @return : wether this message is an ACK for the CONTENT message with given id
-     */
-    public boolean isAckForMsg(int id) {
-        return type == PayloadType.ACK && this.id == id;
+    public int getAgreementId() {
+        return agreementId;
     }
 
-    /**
-     * Uses Java standard serialization to give the bytes corresponding to this
-     * object Message
-     * https://stackoverflow.com/questions/2836646/java-serializable-object-to-byte-array
-     * 
-     * @return : the serialized bytes representing this message
-     * @throws IOException
-     */
-    public byte[] serialize() {
-        ByteBuffer buffer = ByteBuffer.allocate(Constants.SERIALIZED_MSG_SIZE);
-        buffer.putInt(id).putShort(sourceId).putShort(senderId).put(type.byteValue());
-        return buffer.array();
+    public int getActivePropNumber() {
+        return activePropNumber;
     }
 
-    @Override
-    public String toString() {
-        return "Message [id=" + id + ", sourceId=" + sourceId + ", senderId=" + senderId + ", type=" + type + "]";
+    public PayloadType getPayloadType() {
+        return payloadType;
+    }
+
+    public Set<Integer> getValues() {
+        return values;
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + id;
         result = prime * result + sourceId;
+        result = prime * result + agreementId;
+        result = prime * result + activePropNumber;
+        result = prime * result + ((payloadType == null) ? 0 : payloadType.hashCode());
         return result;
     }
 
@@ -191,9 +191,13 @@ public class Message {
         if (getClass() != obj.getClass())
             return false;
         Message other = (Message) obj;
-        if (id != other.id)
-            return false;
         if (sourceId != other.sourceId)
+            return false;
+        if (agreementId != other.agreementId)
+            return false;
+        if (activePropNumber != other.activePropNumber)
+            return false;
+        if (payloadType != other.payloadType)
             return false;
         return true;
     }

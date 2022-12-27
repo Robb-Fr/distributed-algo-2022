@@ -2,72 +2,54 @@ package cs451;
 
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Set;
 
-import cs451.Broadcasts.FifoUniformReliableBroadcast;
-import cs451.Messages.LogsBuilder;
-import cs451.Messages.Message;
-import cs451.Messages.Message.PayloadType;
+import cs451.Broadcasts.LatticeAgreement;
 import cs451.Parsers.ConfigParser;
-import cs451.Parsers.ConfigParser.FifoConfig;
+import cs451.Parsers.ConfigParser.LatticeConfig;
+import cs451.States.LatticeState;
+import cs451.States.LatticeStateGiver;
 import cs451.States.PlState;
 import cs451.States.PlStateGiver;
-import cs451.States.UrbSate;
-import cs451.States.UrbStateGiver;
 
-public class Sender implements Runnable, UrbStateGiver, PlStateGiver {
-    private final LogsBuilder logsBuilder;
-    private final short myId;
-    private final ConfigParser configParser;
-    private final FifoUniformReliableBroadcast fifo;
+public class Sender implements Runnable, PlStateGiver, LatticeStateGiver {
+    private final LatticeConfig latticeConfig;
+    private final LatticeAgreement latticeAgreement;
 
-    public Sender(LogsBuilder logsBuilder, short myId, Map<Short, Host> hostsMap,
-            ConfigParser config)
-            throws UnknownHostException, SocketException {
-        this.myId = myId;
-        this.logsBuilder = logsBuilder;
-        this.configParser = config;
-        this.fifo = new FifoUniformReliableBroadcast(myId, hostsMap);
-    }
-
-    public ConcurrentHashMap<Short, AtomicInteger> getFifoNext() {
-        return fifo.getFifoNext();
+    public Sender(short myId, Map<Short, Host> hostsMap,
+            ConfigParser config) throws SocketException, UnknownHostException {
+        this.latticeConfig = config.getLatticeConfig();
+        this.latticeAgreement = new LatticeAgreement(myId, hostsMap, latticeConfig);
     }
 
     @Override
     public void run() {
+        Thread latticeSender = new Thread(latticeAgreement, "Lattice Receiver");
+        latticeSender.start();
         try {
-            runFifoUniformReliableBroadcast();
+            List<Set<Integer>> proposals = latticeConfig.getProposals();
+            for (int i = 0; i < proposals.size(); ++i) {
+                Set<Integer> proposal = proposals.get(i);
+                while (!latticeAgreement.propose(i, proposal)) {
+                    Thread.sleep(Constants.SLEEP_BEFORE_NEXT_POLL);
+                }
+            }
         } catch (InterruptedException e) {
-            System.err.println("Interrupted sender");
+            System.err.println("Interrupted sender while sleeping");
+            latticeSender.interrupt();
             e.printStackTrace();
-            fifo.interruptUrb();
-        }
-    }
-
-    private void runFifoUniformReliableBroadcast() throws InterruptedException {
-        FifoConfig fifoConf = configParser.getFifoConfig();
-        if (fifoConf == null) {
-            System.err.println("Could not read the fifo config");
-            return;
-        }
-        fifo.startUrb();
-        for (int i = 1; i <= fifoConf.getNbMessages(); i++) {
-            Message m = new Message(i, myId, PayloadType.CONTENT);
-            fifo.broadcast(m);
-            logsBuilder.log("b " + m.getId() + "\n");
         }
     }
 
     @Override
     public PlState getPlState() {
-        return fifo.getPlState();
+        return latticeAgreement.getPlState();
     }
 
     @Override
-    public UrbSate getUrbState() {
-        return fifo.getUrbState();
+    public LatticeState getLatticeState() {
+        return latticeAgreement.getLatticeState();
     }
 }

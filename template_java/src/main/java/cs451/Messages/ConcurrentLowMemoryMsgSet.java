@@ -1,46 +1,43 @@
 package cs451.Messages;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import cs451.Constants;
-import cs451.Host;
+public class ConcurrentLowMemoryMsgSet {
+    // Map<agreementId, Map<sourceId, MessageHash>>
+    private final ConcurrentHashMap<Integer, ConcurrentHashMap.KeySetView<Integer, Boolean>> messages;
+    private final AtomicInteger flushedUntil = new AtomicInteger(0);
+    private final int vs;
 
-public class ConcurrentLowMemoryMsgSet<M extends Message> {
-    private final ConcurrentHashMap<Short, ConcurrentHashMap.KeySetView<Message, Boolean>> delivered;
-    private final ConcurrentHashMap<Short, AtomicInteger> deliveredUntil;
+    public ConcurrentLowMemoryMsgSet(int p, int vs) {
+        this.messages = new ConcurrentHashMap<>(p);
+        this.vs = vs;
+    }
 
-    public ConcurrentLowMemoryMsgSet(Map<Short, Host> hostsMap) {
-        this.delivered = new ConcurrentHashMap<>(hostsMap.size());
-        this.deliveredUntil = new ConcurrentHashMap<>(hostsMap.size());
-        int N = hostsMap.size();
-        for (short host : hostsMap.keySet()) {
-            this.delivered.put(host, ConcurrentHashMap.newKeySet(N * Constants.MAX_OUT_OF_ORDER_DELIVERY));
-            this.deliveredUntil.put(host, new AtomicInteger(0));
+    public boolean add(MessageToBeSent e) {
+        if (e.getMessage().getAgreementId() < flushedUntil.get()) {
+            return false;
         }
+        boolean wasAdded = messages.putIfAbsent(e.getMessage().getAgreementId(),
+                ConcurrentHashMap.newKeySet(vs)) == null;
+        ConcurrentHashMap.KeySetView<Integer, Boolean> set = messages.get(e.getMessage().getAgreementId());
+        wasAdded |= set != null && set.add(e.hashCode());
+        return wasAdded;
     }
 
-    public synchronized void flush(short host, int deliveredUntil) {
-        int newMax = this.deliveredUntil.get(host).updateAndGet(i -> Integer.max(i, deliveredUntil));
-        this.delivered.get(host).removeIf(m -> m.getId() < newMax);
+    public boolean contains(MessageToBeSent e) {
+        ConcurrentHashMap.KeySetView<Integer, Boolean> set = messages.get(e.getMessage().getAgreementId());
+        return e.getMessage().getAgreementId() < flushedUntil.get()
+                || set != null && set.contains(e.hashCode());
     }
 
-    public synchronized boolean add(M e) {
-        return delivered.get(e.getSourceId()).add(e);
-    }
-
-    public synchronized boolean remove(M e) {
-        return delivered.get(e.getSourceId()).remove(e);
-    }
-
-    public boolean contains(M e) {
-        return deliveredUntil.get(e.getSourceId()).get() >= e.getId() || delivered.get(e.getSourceId()).contains(e);
+    public synchronized void flush(int agreementId) {
+        messages.entrySet().removeIf(agId -> agId.getKey() < agreementId);
+        flushedUntil.compareAndSet(Integer.max(flushedUntil.get(), agreementId), agreementId);
     }
 
     @Override
     public String toString() {
-        return "ConcurrentLowMemoryMsgSet [delivered=" + delivered + ", deliveredUntil=" + deliveredUntil + "]";
+        return "ConcurrentLowMemoryMsgSet [messages=" + messages + ", vs=" + vs + "]";
     }
-
 }

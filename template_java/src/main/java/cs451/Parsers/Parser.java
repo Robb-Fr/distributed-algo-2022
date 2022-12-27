@@ -1,5 +1,6 @@
 package cs451.Parsers;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,8 @@ public class Parser {
 
     public Map<Short, Host> hostsMap() {
         List<Host> hosts = hosts();
+        // shuffles the hosts list to avoid having every process sending in the same order
+        Collections.shuffle(hosts);
         Map<Short, Host> hostsMap = new HashMap<>(hosts.size());
         for (Host host : hosts) {
             hostsMap.put(host.getId(), host);

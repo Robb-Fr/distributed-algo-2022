@@ -4,6 +4,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class ConfigParser {
 
@@ -19,22 +23,36 @@ public class ConfigParser {
         return path;
     }
 
-    /**
-     * Returns the perfect link config object associated with the given found config
-     * path, or null if the config cannot be parsed.
-     * 
-     * @return
-     */
-    public PerfectLinkConfig getPerfectLinkConfig() {
+    public LatticeConfig getLatticeConfig() {
         try {
             BufferedReader myReader = new BufferedReader(new FileReader(path));
-            String data = myReader.readLine();
+            List<String[]> data = new ArrayList<>();
+            String line = null;
+            while ((line = myReader.readLine()) != null) {
+                data.add(line.split(" "));
+            }
             myReader.close();
-            if (data != null) {
-                String[] parameters = data.split(" ");
-                int nbMessages = Integer.parseInt(parameters[0]);
-                int receiverId = Integer.parseInt(parameters[1]);
-                return new PerfectLinkConfig(nbMessages, receiverId);
+            if (data != null && data.get(0) != null && data.get(0).length == 3) {
+                int p = Integer.parseInt(data.get(0)[0]);
+                int vs = Integer.parseInt(data.get(0)[1]);
+                int ds = Integer.parseInt(data.get(0)[2]);
+                if (data.size() - 1 != p) {
+                    throw new IllegalArgumentException("Config does not contain the expected number of proposals");
+                }
+                List<Set<Integer>> proposals = new ArrayList<>(p);
+                for (int i = 1; i < p + 1; ++i) {
+                    if (data.get(i).length <= vs) {
+                        int nbProposal = data.get(i).length;
+                        Set<Integer> proposal = new HashSet<>(nbProposal);
+                        for (int j = 0; j < nbProposal; ++j) {
+                            proposal.add(Integer.parseInt(data.get(i)[j]));
+                        }
+                        proposals.add(proposal);
+                    } else {
+                        throw new IllegalArgumentException("Config contains for line " + i + " more messages than vs");
+                    }
+                }
+                return new LatticeConfig(p, vs, ds, proposals);
             }
         } catch (NumberFormatException e) {
             System.err.println("Error occurred parse the parameters of the config");
@@ -46,65 +64,45 @@ public class ConfigParser {
         return null;
     }
 
-    public FifoConfig getFifoConfig() {
-        try {
-            BufferedReader myReader = new BufferedReader(new FileReader(path));
-            String data = myReader.readLine();
-            myReader.close();
-            if (data != null) {
-                int nbMessages = Integer.parseInt(data);
-                return new FifoConfig(nbMessages);
+    public class LatticeConfig {
+        private final int p;
+        private final int vs;
+        private final int ds;
+        private final List<Set<Integer>> proposals;
+
+        public LatticeConfig(int p, int vs, int ds, List<Set<Integer>> proposals) {
+            if (proposals == null) {
+                throw new IllegalArgumentException("Cannot have null proposals");
             }
-        } catch (NumberFormatException e) {
-            System.err.println("Error occurred parse the parameters of the config");
-            e.printStackTrace();
-        } catch (IOException e) {
-            System.err.println("An error occurred while reading the config file");
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public class PerfectLinkConfig {
-        private final int nbMessages;
-        private final int receiverId;
-
-        public PerfectLinkConfig(int nbMessages, int receiverId) {
-            this.nbMessages = nbMessages;
-            this.receiverId = receiverId;
+            if (proposals.size() != p) {
+                throw new IllegalArgumentException("Incorrect value for p and proposals size");
+            }
+            this.p = p;
+            this.vs = vs;
+            this.ds = ds;
+            this.proposals = proposals;
         }
 
-        public int getNbMessages() {
-            return nbMessages;
+        public int getP() {
+            return p;
         }
 
-        public int getReceiverId() {
-            return receiverId;
+        public int getVs() {
+            return vs;
+        }
+
+        public int getDs() {
+            return ds;
+        }
+
+        public List<Set<Integer>> getProposals() {
+            return proposals;
         }
 
         @Override
         public String toString() {
-            return "PerfectLinkConfig [nbMessages=" + nbMessages + ", receiverId=" + receiverId + "]";
+            return "LatticeConfig [p=" + p + ", vs=" + vs + ", ds=" + ds + ", proposals=" + proposals + "]";
         }
-
-    }
-
-    public class FifoConfig {
-        private final int nbMessages;
-
-        public FifoConfig(int nbMessages) {
-            this.nbMessages = nbMessages;
-        }
-
-        public int getNbMessages() {
-            return nbMessages;
-        }
-
-        @Override
-        public String toString() {
-            return "FifoConfig [nbMessages=" + nbMessages + "]";
-        }
-
     }
 
 }

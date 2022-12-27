@@ -3,18 +3,19 @@ package cs451.Messages;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import cs451.Constants;
 
 public class LogsBuilder {
     private final AtomicReference<StringBuilder> logBuilder;
-    private long previousFlush;
+    private AtomicLong previousFlush;
     private final String output;
 
     public LogsBuilder(String output) {
         this.logBuilder = new AtomicReference<>(new StringBuilder(""));
-        this.previousFlush = System.currentTimeMillis();
+        this.previousFlush = new AtomicLong(System.currentTimeMillis());
         this.output = output;
         System.out.println("Initializing output.");
         try {
@@ -37,7 +38,7 @@ public class LogsBuilder {
 
     public synchronized void tryFlush(boolean force) {
         synchronized (logBuilder) {
-            if ((System.currentTimeMillis() - previousFlush) > Constants.TIME_BEFORE_FLUSH || force) {
+            if ((System.currentTimeMillis() - previousFlush.get()) > Constants.TIME_BEFORE_FLUSH || force) {
                 System.out.println("Writing output.");
                 try {
                     BufferedWriter f_writer = new BufferedWriter(new FileWriter(output, true));
@@ -49,10 +50,10 @@ public class LogsBuilder {
                     e.printStackTrace();
                     System.err.println("Failed to write output");
                 }
-                previousFlush = System.currentTimeMillis();
+                previousFlush.set(System.currentTimeMillis());
+                System.gc();
             }
         }
-        System.gc();
     }
 
 }
